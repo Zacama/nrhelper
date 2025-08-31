@@ -1,0 +1,52 @@
+import yaml
+import os
+from dataclasses import dataclass
+
+CONFIG_PATH = ".\\config.yaml"
+
+_config: dict = {}
+_config_mtime = None
+
+@dataclass
+class Config:
+    day_period_seconds: list[int]
+    deadly_nightrain_seconds: int
+
+    update_interval: float
+    detect_interval: float
+
+    foward_day_seconds: int
+    back_day_seconds: int
+
+    day_progress_css: str
+    day_text_css: str
+    in_rain_progress_css: str
+    in_rain_text_css: str
+
+    time_scale: float
+
+    template_standard_size: list[int]
+    mask_lower_white: list[int]
+    mask_upper_white: list[int]
+    scale_range: list[float]
+    dayx_score_threshold: float
+
+    lower_hls_not_in_rain: list[int]
+    upper_hls_not_in_rain: list[int]
+    lower_hls_in_rain: list[int]
+    upper_hls_in_rain: list[int]
+    h_tolerance: int
+    l_tolerance: int
+    s_tolerance: int
+    hp_color_min_area_ratio: float
+    hp_color_max_area_ratio: float
+
+    @staticmethod
+    def get() -> 'Config':
+        global _config, _config_mtime
+        mtime = os.path.getmtime(CONFIG_PATH)
+        if mtime != _config_mtime:
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                _config = yaml.safe_load(f)
+            _config_mtime = mtime
+        return Config(**_config)

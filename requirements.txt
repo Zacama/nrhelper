@@ -1,0 +1,10 @@
+PyQt6
+pyyaml
+Pillow
+opencv-python
+pygame
+pynput
+mss
+pyinstaller
+# win32gui
+# win32con
