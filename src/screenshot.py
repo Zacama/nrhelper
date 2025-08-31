@@ -114,6 +114,8 @@ class ScreenShotWindow(QDialog):
         self.active_item = None
         self.active_handle = None
         self.press_pos_for_drag = None
+
+        self.screenshot_at_saving = None
         
         self._setup_ui()
 
@@ -265,6 +267,7 @@ class ScreenShotWindow(QDialog):
         self.setCursor(Qt.CursorShape.CrossCursor)
 
     def _save(self):
+        self.screenshot_at_saving = QApplication.primaryScreen().grabWindow(0)
         with mss.mss() as sct:
             mss_screen = sct.monitors[0]
         mss_w, mss_h = mss_screen['width'], mss_screen['height']

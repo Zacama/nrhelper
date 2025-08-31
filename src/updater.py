@@ -34,13 +34,17 @@ class Updater(QObject):
         self.detector = Detector()
         self._running = False
 
-        self.auto_detect_enabled: bool = True
+        self.dayx_detect_enabled: bool = True
+        self.in_rain_detect_enabled: bool = True
 
         self.day: int = None
         self.current_phase: Phase = None
         self.phase_start_time: float = None
 
         self.in_rain_start_time: float = None
+
+        self.in_rain_hls = None
+        self.not_in_rain_hls = None
 
         self.day1_detect_region = None
         self.hp_bar_detect_region = None
@@ -156,8 +160,10 @@ class Updater(QObject):
     
     def detect_and_update(self):
         result = self.detector.detect(
-            self.day1_detect_region,
-            self.hp_bar_detect_region
+            self.day1_detect_region if self.dayx_detect_enabled else None,
+            self.hp_bar_detect_region if self.in_rain_detect_enabled else None,
+            self.in_rain_hls,
+            self.not_in_rain_hls,
         )
         if result.start_day1:
             self.start_day1()
@@ -180,7 +186,7 @@ class Updater(QObject):
         while self._running:
             start_time = self.get_time()
 
-            if self.get_time() - last_detect_time > Config.get().detect_interval and self.auto_detect_enabled:
+            if self.get_time() - last_detect_time > Config.get().detect_interval:
                 self.detect_and_update()
                 last_detect_time = self.get_time()
 

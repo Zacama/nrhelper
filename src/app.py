@@ -9,7 +9,7 @@ from src.input import InputWorker, InputSettingWidget, InputSetting
 from src.updater import Updater
 from src.overlay import OverlayWidget, UIState
 from src.settings import SettingsWindow
-from src.common import APP_FULLNAME, APP_VERSION, get_asset_path
+from src.common import APP_FULLNAME, APP_VERSION, ICON_PATH
 from src.logger import info, warning, error
 
 if __name__ == "__main__":
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     
     # 创建系统托盘图标和菜单
     tray_icon = QSystemTrayIcon()
-    tray_icon.setIcon(QIcon(get_asset_path("icon.ico")))
+    tray_icon.setIcon(QIcon(ICON_PATH))
     tray_icon.setToolTip(APP_FULLNAME)
 
     menu = QMenu()

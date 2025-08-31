@@ -15,11 +15,11 @@ mask_upper_white: [179, 90, 255]  # DAYX模板图片白色掩码上限(BGR)
 scale_range: [0.8, 1.2, 20]        # DAYX模板匹配缩放范围(最小比例,最大比例,步数)
 dayx_score_threshold: 0.8         # DAYX模板匹配得分阈值
 
-upper_hls_not_in_rain: [5, 80, 128]   # 最高亮度下不在雨中时血条hls颜色
-lower_hls_not_in_rain: [4, 52, 166]   # 最低亮度下不在雨中时血条hls颜色
+upper_hls_not_in_rain: [3, 80, 128]   # 最高亮度下不在雨中时血条hls颜色
+lower_hls_not_in_rain: [5, 52, 166]   # 最低亮度下不在雨中时血条hls颜色
 upper_hls_in_rain: [163, 90, 130]     # 最高亮度下在雨中时血条hls颜色
 lower_hls_in_rain: [164, 62, 173]     # 最低亮度下在雨中时血条hls颜色
-h_tolerance: 3    # 血条颜色匹配色相容差
+h_tolerance: 5    # 血条颜色匹配色相容差
 l_tolerance: 30   # 血条颜色匹配亮度容差
 s_tolerance: 30   # 血条颜色匹配饱和度容差
 hp_color_min_area_ratio: 0.1  # 血条颜色区域最小面积占比，小于此值视为无效
@@ -34,7 +34,7 @@ day_progress_css: |
       text-align: center;
   }
   QProgressBar::chunk {
-      background-color: #667fc2;
+      background-color: #9296cc;
   }
 
 # 缩圈文字样式
@@ -50,7 +50,7 @@ in_rain_progress_css: |
       text-align: center;
   }
   QProgressBar::chunk {
-      background-color: #ff7192;
+      background-color: #f766ba;
   }
 
 # 雨中冒险文字样式

@@ -30,3 +30,5 @@ def get_appdata_path(path: str) -> str:
         path = str(Path("C:\\") / "temp" / APP_NAME / path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return path
+
+ICON_PATH = get_asset_path("icon.ico")
