@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtCore import QThread
+from PyQt6.QtCore import QThread, Qt
 from PyQt6.QtGui import QIcon, QAction, QCursor
 from PyQt6.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu
@@ -16,6 +16,7 @@ if __name__ == "__main__":
     info("=" * 40)
     info(f"Starting app v{APP_VERSION}...")
 
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_Use96Dpi)
     app = QApplication(sys.argv)
     
     # 防止因没有窗口而导致程序退出

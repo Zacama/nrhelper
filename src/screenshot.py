@@ -2,8 +2,10 @@ import sys
 from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QDialog
 from PyQt6.QtGui import QPainter, QScreen, QPixmap, QColor, QPen, QBrush, QCursor
 from PyQt6.QtCore import Qt, QRect, QPoint
+import mss
 
 from src.input import InputWorker
+from src.logger import info, warning, error
 
 # 配置常量
 HANDLE_SIZE = 8  # 调整手柄的大小
@@ -148,8 +150,16 @@ class ScreenShotWindow(QDialog):
         """捕获全屏并显示窗口，以模态方式运行"""
         screen = QApplication.primaryScreen()
         if not screen: return None
-        
         self.screenshot_pixmap = screen.grabWindow(0)
+
+        ui_w, ui_h = screen.size().width(), screen.size().height()
+        screen_w, screen_h = self.screenshot_pixmap.width(), self.screenshot_pixmap.height()
+        if ui_w != screen_w or ui_h != screen_h:
+            warning(f"UI size and screenshot size do not match: ({ui_w}, {ui_h}) vs ({screen_w}, {screen_h})")
+        self.screenshot_pixmap = self.screenshot_pixmap.scaled(
+            ui_w, ui_h, 
+            Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+        )
         self.setGeometry(screen.geometry())
         self.exec()
         return self.result
@@ -255,6 +265,16 @@ class ScreenShotWindow(QDialog):
         self.setCursor(Qt.CursorShape.CrossCursor)
 
     def _save(self):
+        with mss.mss() as sct:
+            mss_screen = sct.monitors[0]
+        mss_w, mss_h = mss_screen['width'], mss_screen['height']
+        qt_w, qt_h = self.screenshot_pixmap.width(), self.screenshot_pixmap.height()
+        scale_x, scale_y = None, None
+        print( f"mss screen size: ({mss_w}, {mss_h}), qt screen size: ({qt_w}, {qt_h})" )
+        if mss_w != self.screenshot_pixmap.width() or mss_h != self.screenshot_pixmap.height():
+            warning(f"MSS screen size and QT screen size do not match: ({mss_w}, {mss_h}) vs ({qt_w}, {qt_h})")
+            scale_x = mss_w / qt_w
+            scale_y = mss_h / qt_h
         self.result = [
             {
                 'rect': item.rect.getRect(), # (x, y, width, height)
@@ -262,6 +282,11 @@ class ScreenShotWindow(QDialog):
             }
             for item in self.rect_items
         ]
+        if scale_x and scale_y:
+            for r in self.result:
+                x, y, w, h = r['rect']
+                r['rect'] = (int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
+                info(f"resize rect ({(x, y, w, h)}) -> {r['rect']}")
         self.close()
 
     def _cancel(self):

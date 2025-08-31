@@ -51,6 +51,8 @@ def match_mask(image: np.ndarray, template: np.ndarray) -> float:
     for scale in scale_range:
         w, h = template.shape[::-1]
         resized_template = cv2.resize(template, (int(w * scale), int(h * scale)))
+        if resized_template.shape[0] > image.shape[0] or resized_template.shape[1] > image.shape[1]:
+            continue
         res = cv2.matchTemplate(image, resized_template, cv2.TM_SQDIFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         score = min(score, min_val)
