@@ -2,12 +2,11 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QSlider, QGroupBox, QCheckBox, QPushButton,
-    QMessageBox
+    QMessageBox, QApplication,
 )
 from PyQt6.QtGui import QPixmap
 import yaml
 from dataclasses import dataclass, asdict
-from PIL import ImageGrab
 import os
 
 from src.overlay import UIState, OverlayWidget
@@ -107,7 +106,7 @@ class SettingsWindow(QWidget):
 
         screenshot_region_help_layout = QHBoxLayout()
         help_button = QPushButton("查看帮助")
-        help_button.setStyleSheet("padding: 8px;")
+        help_button.setStyleSheet("padding: 6px;")
         help_button.clicked.connect(self.show_detect_tutorial)
         screenshot_region_help_layout.addWidget(help_button)
         self.auto_detect_layout.addLayout(screenshot_region_help_layout)
@@ -136,7 +135,7 @@ class SettingsWindow(QWidget):
 
         clear_button_layout = QHBoxLayout()
         clear_button = QPushButton("清空检测区域")
-        clear_button.setStyleSheet("padding: 8px;")
+        clear_button.setStyleSheet("padding: 6px;")
         clear_button.clicked.connect(self.clear_screenshot_region)
         clear_button_layout.addWidget(clear_button)
         clear_button_layout.addStretch()
@@ -144,7 +143,7 @@ class SettingsWindow(QWidget):
 
         # 打开日志位置按钮
         open_log_button = QPushButton("打开日志位置")
-        open_log_button.setStyleSheet("padding: 8px;")
+        open_log_button.setStyleSheet("padding: 6px;")
         open_log_button.clicked.connect(self.open_log_directory)
         self.layout.addWidget(open_log_button)
 
@@ -170,7 +169,8 @@ class SettingsWindow(QWidget):
         super().closeEvent(event)
 
     def start_screenshot_region(self):
-        sw, sh = ImageGrab.grab().size
+        screen_size = QApplication.primaryScreen().geometry().size()
+        sw, sh = screen_size.width(), screen_size.height()
         COLOR_HP_BAR = "#a84747"
         COLOR_DAY_I = "#686435"
         SCREENSHOT_WINDOW_CONFIG = {
