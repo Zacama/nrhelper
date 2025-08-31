@@ -2,17 +2,17 @@ day_period_seconds: [270, 180, 210, 180]  # 四次缩圈时间段长度(秒)
 deadly_nightrain_seconds: 110             # 雨中冒险持续时间(秒)
 
 update_interval: 0.1  # 界面刷新间隔(秒)
-detect_interval: 0.1  # 自动检测间隔(秒)
+detect_interval: 0.2  # 自动检测间隔(秒)
 
 foward_day_seconds: 10  # 快进一次缩圈时间（秒）
 back_day_seconds: 10    # 后退一次缩圈时间（秒）
 
 time_scale: 1.0   # 时间流逝倍率
 
-template_standard_size: [222, 60] # DAYX模板图片标准尺寸(宽,高)
+template_standard_size: [111, 30] # DAYX模板图片标准尺寸(宽,高)
 mask_lower_white: [0, 0, 200]     # DAYX模板图片白色掩码下限(BGR)
 mask_upper_white: [179, 90, 255]  # DAYX模板图片白色掩码上限(BGR)
-scale_range: [0.9, 1.1, 5]        # DAYX模板匹配缩放范围(最小比例,最大比例,步数)
+scale_range: [0.8, 1.2, 20]        # DAYX模板匹配缩放范围(最小比例,最大比例,步数)
 dayx_score_threshold: 0.8         # DAYX模板匹配得分阈值
 
 upper_hls_not_in_rain: [5, 80, 128]   # 最高亮度下不在雨中时血条hls颜色

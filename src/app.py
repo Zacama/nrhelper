@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu
 )
 
-from src.input import InputWorker
+from src.input import InputWorker, InputSettingWidget, InputSetting
 from src.updater import Updater
 from src.overlay import OverlayWidget, UIState
 from src.settings import SettingsWindow

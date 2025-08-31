@@ -41,7 +41,7 @@ def get_image_mask(image: Image.Image) -> np.ndarray:
     # mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel) # 开运算去除小白点噪声
     # mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel) # 闭运算连接断裂区域
 
-    # cv2.imwrite(f"sandbox/debug_hsv_mask.png", mask)
+    cv2.imwrite(f"sandbox/debug_hsv_mask.png", mask)
     return mask
 
 def match_mask(image: np.ndarray, template: np.ndarray) -> float:
@@ -54,6 +54,7 @@ def match_mask(image: np.ndarray, template: np.ndarray) -> float:
         res = cv2.matchTemplate(image, resized_template, cv2.TM_SQDIFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         score = min(score, min_val)
+    # print("match mask score: ", score)
     # print("match mask time: ", time.time() - t)
     return score
 
@@ -87,6 +88,7 @@ class Detector:
 
     def detect_dayx(self, sct, day1_region: tuple[int]) -> tuple[bool, float]:
         try:
+            config = Config.get()
             t = time.time()
             x, y, w, h = day1_region
             cx, cy = x + w // 2, y + h // 2
@@ -94,20 +96,29 @@ class Detector:
             day2_region = (cx - day2_w // 2, cy - h // 2, day2_w, h)
             day3_w = int(w * self.day3_w_ratio)
             day3_region = (cx - day3_w // 2, cy - h // 2, day3_w, h)
+            sc = sct.grab({
+                "left":     day3_region[0],
+                "top":      day3_region[1],
+                "width":    day3_region[2],
+                "height":   day3_region[3]
+            })
+            sc = Image.frombytes("RGB", sc.size, sc.bgra, "raw", "BGRX")
             def match_region(region: tuple[int], template_mask: np.ndarray) -> float:
-                screenshot = sct.grab({
-                    "left": region[0],
-                    "top": region[1],
-                    "width": region[2],
-                    "height": region[3]
-                })
-                img = Image.frombytes("RGB", screenshot.size, screenshot.bgra, "raw", "BGRX")
+                region = (
+                    region[0] - day3_region[0], 
+                    region[1] - day3_region[1], 
+                    region[0] - day3_region[0] + region[2], 
+                    region[1] - day3_region[1] + region[3]
+                )
+                img = sc.crop(region)
+                img = resize_by_height_keep_aspect_ratio(img, config.template_standard_size[1])
                 img_mask = get_image_mask(img)
                 return match_mask(img_mask, template_mask)
             score_day1 = match_region(day1_region, self.day1_mask)
             score_day2 = match_region(day2_region, self.day2_mask)
             score_day3 = match_region(day3_region, self.day3_mask)
             # print("detect dayx time: ", time.time() - t)
+            # print(f"{score_day1:.2f}, {score_day2:.2f}, {score_day3:.2f}")
             return score_day1, score_day2, score_day3
         except Exception as e:
             error(f"Detect dayx error")
@@ -142,6 +153,7 @@ class Detector:
             in_rain_ratio     = calc_pixel_num(hls, config.lower_hls_in_rain,     config.upper_hls_in_rain)     / total_pixel_num
 
             # print(f"{not_in_rain_ratio:.2f}, {in_rain_ratio:.2f}")
+            # print("detect in rain time: ", time.time() - t)
             return not_in_rain_ratio, in_rain_ratio
         except Exception as e:
             error(f"Detect in rain error")

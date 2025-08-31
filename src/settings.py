@@ -236,7 +236,7 @@ class SettingsWindow(QWidget):
         layout.addWidget(QLabel("5. 最后点击\"保存\"按钮完成设置，在设置界面查看是否显示\"已设置\""))
         layout.addWidget(img_widgets[5])
         layout.addWidget(QLabel("6. 之后正常游玩即可自动计时缩圈和雨中冒险，若修改游戏分辨率则需要重新框选\n"
-                                "如果DAY X图标出现时正在浏览背包和地图，或者血条过短，检测可能失败\n"
+                                "如果DAY X图标出现时正在浏览背包和地图，或者血条过短，以及开启HDR时，检测可能失败\n"
                                 "因此仍然推荐设置快捷键作为备用"))
         msg.layout().addLayout(layout, 0, 0)
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
