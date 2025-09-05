@@ -3,7 +3,7 @@ import os
 
 APP_NAME = "nightreign-overlay-helper"
 APP_NAME_CHS = "黑夜君临悬浮助手"
-APP_VERSION = "0.5.1"
+APP_VERSION = "0.5.2"
 APP_FULLNAME = f"{APP_NAME_CHS}v{APP_VERSION}"
 APP_AUTHER = "NeuraXmy"
 
