@@ -41,6 +41,10 @@ class Config:
     hp_color_min_area_ratio: float
     hp_color_max_area_ratio: float
 
+    fixed_map_overlay_draw_size: list[int] | None
+    map_overlay_draw_size_ratio: float | None
+    full_map_error_threshold: float
+
     @staticmethod
     def get() -> 'Config':
         global _config, _config_mtime

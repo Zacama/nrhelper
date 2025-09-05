@@ -1,14 +1,17 @@
 from pathlib import Path
 import os
 
-APP_NAME = "nightreign-float-timer"
-APP_NAME_CHS = "黑夜君临计时器"
-APP_VERSION = "0.4"
+APP_NAME = "nightreign-overlay-helper"
+APP_NAME_CHS = "黑夜君临悬浮助手"
+APP_VERSION = "0.5"
 APP_FULLNAME = f"{APP_NAME_CHS}v{APP_VERSION}"
 APP_AUTHER = "NeuraXmy"
 
 def get_asset_path(path: str) -> str:
     return str(Path("assets") / path)
+
+def get_data_path(path: str) -> str:
+    return str(Path("data") / path)
 
 def _get_user_directory() -> Path:
     try:

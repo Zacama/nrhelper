@@ -5,10 +5,11 @@ from PyQt6.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu
 )
 
-from src.input import InputWorker, InputSettingWidget, InputSetting
+from src.ui.input import InputWorker
+from src.ui.overlay import OverlayWidget
+from src.ui.map_overlay import MapOverlayWidget
+from src.ui.settings import SettingsWindow
 from src.updater import Updater
-from src.overlay import OverlayWidget, UIState
-from src.settings import SettingsWindow
 from src.common import APP_FULLNAME, APP_VERSION, ICON_PATH
 from src.logger import info, warning, error
 
@@ -25,7 +26,8 @@ if __name__ == "__main__":
     # 创建对象
     input = InputWorker()
     overlay = OverlayWidget()
-    updater = Updater(overlay)
+    map_overlay = MapOverlayWidget()
+    updater = Updater(overlay, map_overlay)
     settings_window = SettingsWindow(overlay, updater, input)
     
     # 创建系统托盘图标和菜单

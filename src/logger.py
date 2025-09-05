@@ -9,7 +9,7 @@ LOG_DIR = get_appdata_path("logs")
 
 _logger = None
 
-def setup_logger(level: int = DEBUG):
+def setup_logger(level: int = INFO):
     handler = StreamHandler()
     handler.setFormatter(Formatter('%(asctime)s [%(levelname)s] %(message)s'))
     logger = getLogger()

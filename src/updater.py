@@ -1,12 +1,21 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 import time
 from enum import Enum
+from PIL import Image
 
 from src.config import Config
-from src.detector import Detector
-from src.overlay import OverlayWidget, UIState
-from src.input import InputWorker, InputSetting
 from src.logger import info, warning, error
+from src.ui.overlay import OverlayWidget, OverlayUIState
+from src.ui.map_overlay import MapOverlayWidget, MapOverlayUIState
+from src.detector import (
+    DetectorManager, 
+    DetectParam, 
+    DayDetectParam,
+    RainDetectParam,
+    MapDetectParam,
+)
+from src.detector.map_info import MapPattern
+from src.detector.map_detector import MapDetector
 
 
 class Phase(Enum):
@@ -24,30 +33,38 @@ def format_period(seconds: int) -> str:
 
 
 class Updater(QObject):
-    update_ui_state_signal = pyqtSignal(UIState)
+    update_overlay_ui_state_signal = pyqtSignal(OverlayUIState)
+    update_map_overlay_ui_state_signal = pyqtSignal(MapOverlayUIState)
 
-    def __init__(self, overlay: OverlayWidget):
+    def __init__(self, overlay: OverlayWidget, map_overlay: MapOverlayWidget):
         super().__init__()
         self.overlay = overlay
-        self.update_ui_state_signal.connect(self.overlay.update_ui_state)
+        self.update_overlay_ui_state_signal.connect(self.overlay.update_ui_state)
 
-        self.detector = Detector()
+        self.map_overlay = map_overlay
+        self.update_map_overlay_ui_state_signal.connect(self.map_overlay.update_ui_state)
+
+        self.detector = DetectorManager()
         self._running = False
-
-        self.dayx_detect_enabled: bool = True
-        self.in_rain_detect_enabled: bool = True
 
         self.day: int = None
         self.current_phase: Phase = None
         self.phase_start_time: float = None
-
-        self.in_rain_start_time: float = None
-
-        self.in_rain_hls = None
-        self.not_in_rain_hls = None
-
+        self.dayx_detect_enabled: bool = True
         self.day1_detect_region = None
-        self.hp_bar_detect_region = None
+        
+        self.in_rain_start_time: float = None
+        self.in_rain_detect_enabled: bool = True
+        self.hp_bar_detect_region: tuple[int] = None
+        self.in_rain_hls: tuple[int] = None
+        self.not_in_rain_hls: tuple[int] = None
+
+        self.map_detect_enabled: bool = True
+        self.map_region: tuple[int] = None
+        self.current_is_full_map: bool = False
+        self.do_match_map_pattern_flag: bool = True
+        self.map_pattern: MapPattern = None
+        self.map_overlay_visible: bool = False
 
 
     def get_time(self) -> float:
@@ -58,6 +75,7 @@ class Updater(QObject):
         self.current_phase = Phase.FIRST_CIRCLE_STABLE
         self.phase_start_time = self.get_time()
         info("Day 1 started.")
+        self.set_to_detect_map_pattern_once()
 
     def start_day2(self):
         self.day = 2
@@ -131,6 +149,7 @@ class Updater(QObject):
                 else:
                     self.phase_start_time = self.get_time()
 
+
     def start_in_rain(self):
         self.in_rain_start_time = self.get_time()
         info("Started in rain.")
@@ -157,26 +176,99 @@ class Updater(QObject):
         text = f"雨中冒险倒计时 {format_period(int(max(total - t, 0)))} - {percent}%"
         return progress, text
 
-    
+
+    def set_to_detect_map_pattern_once(self):
+        self.do_match_map_pattern_flag = True
+        info("Set to detect map pattern once.")
+
+    def update_map_overlay_image(self, image: Image.Image):
+        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+            overlay_image=image,
+        ))
+        info("Update map overlay image.")
+
+    def show_map_overlay(self):
+        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+            opacity=1.0,
+            x=self.map_region[0],
+            y=self.map_region[1],
+            w=self.map_region[2],
+            h=self.map_region[3],
+        ))
+        self.map_overlay_visible = True
+        info("Show map overlay.")
+
+    def hide_map_overlay(self):
+        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+            opacity=0.0,
+        ))
+        self.map_overlay_visible = False
+        info("Hide map overlay.")
+
+    def show_or_hide_map_overlay_by_shortcut(self):
+        if self.map_overlay_visible:
+            self.hide_map_overlay()
+        else:
+            self.show_map_overlay()
+
+
     def detect_and_update(self):
-        result = self.detector.detect(
-            self.day1_detect_region if self.dayx_detect_enabled else None,
-            self.hp_bar_detect_region if self.in_rain_detect_enabled else None,
-            self.in_rain_hls,
-            self.not_in_rain_hls,
-        )
-        if result.start_day1:
+        param = DetectParam()
+        if self.dayx_detect_enabled:
+            param.day_detect_param = DayDetectParam(
+                day1_region=self.day1_detect_region,
+            )
+        if self.in_rain_detect_enabled:
+            param.rain_detect_param = RainDetectParam(
+                in_rain_hls=self.in_rain_hls,
+                not_in_rain_hls=self.not_in_rain_hls,
+                hp_bar_region=self.hp_bar_detect_region,
+            )
+        if self.map_detect_enabled:
+            param.map_detect_param = MapDetectParam(
+                map_region=self.map_region,
+                do_match_full_map=True,
+            )
+
+        result = self.detector.detect(param)
+
+        if result.day_detect_result.start_day1:
             self.start_day1()
-        elif result.start_day2:
+        elif result.day_detect_result.start_day2:
             self.start_day2()
-        elif result.start_day3:
+        elif result.day_detect_result.start_day3:
             self.start_day3()
 
-        if result.is_in_rain is not None:
-            if result.is_in_rain and self.in_rain_start_time is None:
+        is_in_rain = result.rain_detect_result.is_in_rain
+        if is_in_rain is not None:
+            if is_in_rain and self.in_rain_start_time is None:
                 self.start_in_rain()
-            if not result.is_in_rain and self.in_rain_start_time is not None:
+            if not is_in_rain and self.in_rain_start_time is not None:
                 self.stop_in_rain()
+
+        is_full_map = result.map_detect_result.is_full_map
+        if is_full_map is not None:
+            if is_full_map and not self.current_is_full_map:
+                info("Current map changed to full map.")
+                self.current_is_full_map = True
+                self.show_map_overlay()
+            if not is_full_map and self.current_is_full_map:
+                info("Current map changed to non-full map.")
+                self.current_is_full_map = False
+                self.hide_map_overlay()
+
+        if self.map_detect_enabled and self.do_match_map_pattern_flag and is_full_map:
+            self.do_match_map_pattern_flag = False
+            self.update_map_overlay_image(MapDetector.get_loading_image(self.map_region[2:4]))
+            result = self.detector.detect(DetectParam(
+                map_detect_param=MapDetectParam(
+                    map_region=self.map_region,
+                    do_match_pattern=True,
+                )
+            ))
+            self.map_pattern = result.map_detect_result.pattern
+            self.update_map_overlay_image(result.map_detect_result.overlay_image)
+
 
     def run(self):
         self._running = True
@@ -194,7 +286,7 @@ class Updater(QObject):
             progress, text = self.get_phase_progress_text()
             progress2, text2 = self.get_in_rain_progress_text()
 
-            self.update_ui_state_signal.emit(UIState(
+            self.update_overlay_ui_state_signal.emit(OverlayUIState(
                 progress=progress,
                 text=text,
                 progress2=progress2,

@@ -25,6 +25,10 @@ s_tolerance: 30   # 血条颜色匹配饱和度容差
 hp_color_min_area_ratio: 0.1  # 血条颜色区域最小面积占比，小于此值视为无效
 hp_color_max_area_ratio: 0.5  # 血条颜色区域最大面积占比，大于此值认为血条为对应颜色
 
+fixed_map_overlay_draw_size: null   # 固定地图信息绘制尺寸(宽,高)
+map_overlay_draw_size_ratio: 1.0    # 地图信息绘制尺寸相对于原图比例
+full_map_error_threshold: 30        # 判断当前地图是否是完整地图的误差阈值
+
 # 缩圈进度条样式
 day_progress_css: |
   QProgressBar {
