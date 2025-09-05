@@ -413,16 +413,18 @@ class SettingsWindow(QWidget):
         layout.addWidget(QLabel("1. 首先在设置界面调整\"截取检测区域快捷键\""))
         layout.addWidget(img_widgets[0])
         layout.addWidget(QLabel("2. 开始一局单人游戏，在游戏第一天开始，出现\"DAY I\"图标时，按下设置的快捷键\n"
-                                "画面会定格，并出现几个按钮"))
+                                "画面会定格，并出现几个按钮（如果此时鼠标被锁定在屏幕中间，点一下左键即可）"))
         hlayout = QHBoxLayout()
         hlayout.addWidget(img_widgets[1])
         hlayout.addWidget(img_widgets[2])
         layout.addLayout(hlayout)
         layout.addWidget(QLabel("3. 点击\"点我并框出 血条 的区域\"按钮，然后用鼠标框选屏幕上的血条区域\n"
-                                "框选的区域如下图所示，需要把血条的纯色内部框进去，只需要框最前面一小段，尽量不要框到边框"))
+                                "框选的区域如下图所示，需要把血条的纯色内部框进去，尽量不要框到边框\n"
+                                "⚠️即使你画面里的血条可能更长，但也只需要框最左边的一小段！"))
         layout.addWidget(img_widgets[3])
         layout.addWidget(QLabel("4. 点击\"点我并框出 DAY I 图标 的区域\"按钮，然后用鼠标框选屏幕上的 DAY I 图标\n"
-                                "框选的区域如下图所示，需要把最左边的D和最右边的I的突出部分也要框进去，并且尽量严丝合缝"))
+                                "框选的区域如下图所示，需要把最左边的D和最右边的I的突出部分也要框进去\n"
+                                "⚠️尽量严丝合缝，上下不要留有空隙"))
         layout.addWidget(img_widgets[4])
         layout.addWidget(QLabel("5. 最后点击\"保存\"按钮完成设置，在设置界面查看是否显示\"已设置\""))
         layout.addWidget(img_widgets[5])
@@ -576,7 +578,8 @@ class SettingsWindow(QWidget):
         layout: QVBoxLayout = QVBoxLayout()
         layout.addWidget(QLabel("1. 首先在设置界面调整\"截取地图区域快捷键\""))
         layout.addWidget(img_widgets[0])
-        layout.addWidget(QLabel("2. 在任意有地图的游戏画面下按下设置的快捷键，并框选地图的区域"))
+        layout.addWidget(QLabel("2. 在任意有地图的游戏画面下按下设置的快捷键，并框选地图的区域\n"
+                                "⚠️框的区域需要和地图的边框完全贴合"))
         layout.addWidget(img_widgets[1])
         layout.addWidget(QLabel("3. 回到设置界面看到\"已设置\"即可"))
         layout.addWidget(img_widgets[2])
@@ -587,7 +590,9 @@ class SettingsWindow(QWidget):
                                 "       会触发一次自动识别，直到下一次Day1计时开始前不会再次触发"))
         layout.addWidget(QLabel("ℹ️ 手动识别触发："))
         layout.addWidget(QLabel("       可以用“识别地图快捷键”手动触发识别"))
-        layout.addWidget(QLabel("5. 识别成功后，信息会悬浮显示在地图上，可以用“显示/隐藏信息快捷键”切换显示"))
+        layout.addWidget(QLabel("5. 识别成功后，地图在缩放到最小的状态时，信息会悬浮显示在地图上（暂时不支持跟随缩放）\n"
+                                "可以用“显示/隐藏信息快捷键”切换显示\n"))
+        layout.addWidget(QLabel("⚠️某些地图的数据可能有错误，发现错误可截图反馈给作者"))
         msg.layout().addLayout(layout, 0, 0)
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()

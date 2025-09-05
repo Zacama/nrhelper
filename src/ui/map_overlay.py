@@ -23,6 +23,7 @@ class MapOverlayUIState:
     opacity: float | None = None
     visible: bool | None = None
     overlay_image: Image.Image | None = None
+    clear_image: bool = False
 
 
 class MapOverlayWidget(QWidget):
@@ -57,7 +58,10 @@ class MapOverlayWidget(QWidget):
 
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
-    def set_image(self, img: Image.Image):
+    def set_image(self, img: Image.Image | None):
+        if img is None:
+            self.label.clear()
+            return
         img = img.convert("RGBA").resize((self.width(), self.height()), Image.Resampling.BICUBIC)
         data = img.tobytes("raw", "RGBA")
         qimg = QImage(data, img.width, img.height, QImage.Format.Format_RGBA8888)
@@ -84,6 +88,8 @@ class MapOverlayWidget(QWidget):
                 self.hide()
         if state.overlay_image is not None:
             self.set_image(state.overlay_image)
+        if state.clear_image:
+            self.set_image(None)
         self.update()
 
 

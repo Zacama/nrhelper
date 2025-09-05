@@ -16,6 +16,13 @@ from src.detector import (
 )
 from src.detector.map_info import MapPattern
 from src.detector.map_detector import MapDetector
+from enum import Enum
+
+
+class DoMatchMapPatternFlag(Enum):
+    FALSE = 0
+    PREPARE = 1
+    TRUE = 2
 
 
 class Phase(Enum):
@@ -62,7 +69,7 @@ class Updater(QObject):
         self.map_detect_enabled: bool = True
         self.map_region: tuple[int] = None
         self.current_is_full_map: bool = False
-        self.do_match_map_pattern_flag: bool = True
+        self.do_match_map_pattern_flag: DoMatchMapPatternFlag = DoMatchMapPatternFlag.TRUE
         self.map_pattern: MapPattern = None
         self.map_overlay_visible: bool = False
 
@@ -178,7 +185,7 @@ class Updater(QObject):
 
 
     def set_to_detect_map_pattern_once(self):
-        self.do_match_map_pattern_flag = True
+        self.do_match_map_pattern_flag = DoMatchMapPatternFlag.PREPARE
         info("Set to detect map pattern once.")
 
     def update_map_overlay_image(self, image: Image.Image):
@@ -257,17 +264,27 @@ class Updater(QObject):
                 self.current_is_full_map = False
                 self.hide_map_overlay()
 
-        if self.map_detect_enabled and self.do_match_map_pattern_flag and is_full_map:
-            self.do_match_map_pattern_flag = False
-            self.update_map_overlay_image(MapDetector.get_loading_image(self.map_region[2:4]))
-            result = self.detector.detect(DetectParam(
-                map_detect_param=MapDetectParam(
-                    map_region=self.map_region,
-                    do_match_pattern=True,
-                )
-            ))
-            self.map_pattern = result.map_detect_result.pattern
-            self.update_map_overlay_image(result.map_detect_result.overlay_image)
+        if self.map_detect_enabled:
+            # 隐藏信息显示，等待下一次更新进行识别
+            if self.do_match_map_pattern_flag == DoMatchMapPatternFlag.PREPARE:
+                self.do_match_map_pattern_flag = DoMatchMapPatternFlag.TRUE
+                self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+                    clear_image=True,
+                ))
+                info("Hide overlay and prepared to detect map pattern.")
+
+            # 进行识别
+            if self.do_match_map_pattern_flag == DoMatchMapPatternFlag.TRUE and is_full_map:
+                self.do_match_map_pattern_flag = DoMatchMapPatternFlag.FALSE
+                self.update_map_overlay_image(MapDetector.get_loading_image(self.map_region[2:4]))
+                result = self.detector.detect(DetectParam(
+                    map_detect_param=MapDetectParam(
+                        map_region=self.map_region,
+                        do_match_pattern=True,
+                    )
+                ))
+                self.map_pattern = result.map_detect_result.pattern
+                self.update_map_overlay_image(result.map_detect_result.overlay_image)
 
 
     def run(self):

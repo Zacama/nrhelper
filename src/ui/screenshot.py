@@ -269,7 +269,7 @@ class ScreenShotWindow(QDialog):
     def _save(self):
         self.screenshot_at_saving = QApplication.primaryScreen().grabWindow(0)
         with mss.mss() as sct:
-            mss_screen = sct.monitors[0]
+            mss_screen = sct.monitors[1]
         mss_w, mss_h = mss_screen['width'], mss_screen['height']
         qt_w, qt_h = self.screenshot_pixmap.width(), self.screenshot_pixmap.height()
         scale_x, scale_y = None, None

@@ -347,7 +347,7 @@ class MapDetector:
         texts, icons = [], []
 
         # day1 boss
-        x, y = pattern.day1_pos
+        x, y = scale_size(pattern.day1_pos)
         name = get_name(pattern.day1_boss) or "未知BOSS"
         extra_name = get_name(pattern.day1_extra_boss) if pattern.day1_extra_boss != -1 else None
         icons.append(((x, y), NIGHT_CIRCLE_ICON))
@@ -356,7 +356,7 @@ class MapDetector:
                                      FONT_SIZE_LARGE, (255, 255, 255, 255), OUTLINE_W_LARGE, OUTLINE_COLOR))
 
         # day2 boss
-        x, y = pattern.day2_pos
+        x, y = scale_size(pattern.day2_pos)
         name = get_name(pattern.day2_boss) or "未知BOSS"
         extra_name = get_name(pattern.day2_extra_boss) if pattern.day2_extra_boss != -1 else None
         icons.append(((x, y), NIGHT_CIRCLE_ICON))
@@ -418,6 +418,7 @@ class MapDetector:
 
         # 腐败恩惠
         if pos := ROTREW_POS.get(pattern.rot_rew):
+            pos = scale_size(pos)
             icons.append((pos, ROTREW_ICON))
             texts.append(((pos[0], pos[1] + scale_size(20)), "恩惠", FONT_SIZE_SMALL, (255, 200, 200, 255), OUTLINE_W_SMALL, OUTLINE_COLOR))
 
