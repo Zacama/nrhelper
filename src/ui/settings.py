@@ -53,7 +53,7 @@ class SettingsWindow(QWidget):
         size_layout = QHBoxLayout()
         size_layout.addWidget(QLabel("大小"))
         self.size_slider = QSlider(Qt.Orientation.Horizontal)
-        self.size_slider.setRange(10, 500)
+        self.size_slider.setRange(5, 1000)
         self.size_slider.setValue(self.overlay.width())
         self.size_slider.valueChanged.connect(self.change_overlay_size)
         size_layout.addWidget(self.size_slider)
@@ -62,11 +62,18 @@ class SettingsWindow(QWidget):
         opacity_layout = QHBoxLayout()
         opacity_layout.addWidget(QLabel("透明度"))
         self.opacity_slider = QSlider(Qt.Orientation.Horizontal)
-        self.opacity_slider.setRange(10, 100)
+        self.opacity_slider.setRange(0, 100)
         self.opacity_slider.setValue(int(self.overlay.windowOpacity() * 100))
         self.opacity_slider.valueChanged.connect(self.change_overlay_opacity)
         opacity_layout.addWidget(self.opacity_slider)
         self.appearance_layout.addLayout(opacity_layout)
+
+        set_position_center_layout = QHBoxLayout()
+        set_position_center_button = QPushButton("设置水平居中")
+        set_position_center_button.setStyleSheet("padding: 6px;")
+        set_position_center_button.clicked.connect(self.set_overlay_position_center)
+        set_position_center_layout.addWidget(set_position_center_button)
+        self.appearance_layout.addLayout(set_position_center_layout)
 
         self.appearance_layout.addWidget(QLabel("提示：现在可以用鼠标左键拖动调整位置"))
         self.appearance_layout.addWidget(QLabel("请使用无边框窗口模式启动游戏\n独占全屏模式下无法使用"))
@@ -347,6 +354,10 @@ class SettingsWindow(QWidget):
         self.update_ui_state_signal.emit(OverlayUIState(opacity=value / 100.0))
         info(f"Overlay opacity changed to {value}")
 
+    def set_overlay_position_center(self):
+        self.update_ui_state_signal.emit(OverlayUIState(set_x_to_center=True))
+        info("Overlay position set to center")
+
     # =========================== DayX Detect =========================== #
 
     def update_dayx_detect_enable(self, state):
@@ -376,7 +387,7 @@ class SettingsWindow(QWidget):
             return
         else:
             if screenshot := window.screenshot_at_saving:
-                save_path = get_appdata_path("detect_region_screenshot.png")
+                save_path = get_appdata_path("detect_region_screenshot.jpg")
                 screenshot.save(save_path)
             for item in region_result:
                 if item['color'] == COLOR_HP_BAR:
@@ -617,7 +628,7 @@ class SettingsWindow(QWidget):
             return
         else:
             if screenshot := window.screenshot_at_saving:
-                save_path = get_appdata_path("map_region_screenshot.png")
+                save_path = get_appdata_path("map_region_screenshot.jpg")
                 screenshot.save(save_path)
             for item in region_result:
                 if item['color'] == COLOR_MAP_REGION:

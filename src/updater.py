@@ -274,7 +274,7 @@ class Updater(QObject):
                 info("Hide overlay and prepared to detect map pattern.")
 
             # 进行识别
-            if self.do_match_map_pattern_flag == DoMatchMapPatternFlag.TRUE and is_full_map:
+            elif self.do_match_map_pattern_flag == DoMatchMapPatternFlag.TRUE and is_full_map:
                 self.do_match_map_pattern_flag = DoMatchMapPatternFlag.FALSE
                 self.update_map_overlay_image(MapDetector.get_loading_image(self.map_region[2:4]))
                 result = self.detector.detect(DetectParam(

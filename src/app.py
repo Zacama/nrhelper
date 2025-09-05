@@ -13,12 +13,48 @@ from src.updater import Updater
 from src.common import APP_FULLNAME, APP_VERSION, ICON_PATH
 from src.logger import info, warning, error
 
+
+def log_system_and_screen_info():
+    try:
+        import platform
+        system = platform.system()
+        release = platform.release()
+        version = platform.version()
+        info(f"Operating System: {system} {release} ({version})")
+    except Exception as e:
+        warning(f"Error getting OS info: {e}")
+
+    try:
+        import mss
+        with mss.mss() as sct:
+            monitors = sct.monitors
+            info(f"MSS Detected {len(monitors)-1} monitor(s):")
+            for i, monitor in enumerate(monitors[1:], start=1):
+                info(f"    Monitor {i}: {monitor['width']}x{monitor['height']} at ({monitor['left']},{monitor['top']})")
+    except Exception as e:
+        warning(f"Error getting monitor info: {e}")
+
+    try:
+        from PyQt6.QtWidgets import QApplication
+        app: QApplication = QApplication.instance()
+        if app:
+            screen = app.primaryScreen()
+            size = screen.size()
+            dpi = screen.logicalDotsPerInch()
+            device_pixel_ratio = screen.devicePixelRatio()
+            info(f"Primary Screen: {size.width()}x{size.height()}, DPI: {dpi}, Device Pixel Ratio: {device_pixel_ratio}")
+    except Exception as e:
+        warning(f"Error getting primary screen info: {e}")
+
+
 if __name__ == "__main__":
     info("=" * 40)
     info(f"Starting app v{APP_VERSION}...")
 
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_Use96Dpi)
     app = QApplication(sys.argv)
+
+    log_system_and_screen_info()
     
     # 防止因没有窗口而导致程序退出
     app.setQuitOnLastWindowClosed(False)

@@ -26,6 +26,7 @@ class OverlayUIState:
     progress2: float | None = None
     text2: str | None = None
     progress2_visible: bool | None = None
+    set_x_to_center: bool = False
 
 
 class OverlayWidget(QWidget):
@@ -153,6 +154,11 @@ class OverlayWidget(QWidget):
     def update_ui_state(self, state: OverlayUIState):
         if state.x is not None and state.y is not None:
             self.move(state.x, state.y)
+        if state.set_x_to_center:
+            screen = QApplication.primaryScreen()
+            screen_geometry = screen.geometry()
+            new_x = (screen_geometry.width() - self.width()) // 2
+            self.move(new_x, self.y())
         if state.scale is not None:
             self._apply_scale(state.scale)
         if state.opacity is not None:

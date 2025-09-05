@@ -235,8 +235,8 @@ class MapDetector:
             # info(f"pos {x},{y} match construct {ctype} with score {score:.4f}")
 
         # 保存结果用于调试
-        cv2.imwrite(get_appdata_path(f"map.png"), cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        cv2.imwrite(get_appdata_path(f"map_poi_result.png"), cv2.cvtColor(poi_result_img, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(get_appdata_path(f"map.jpg"), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(get_appdata_path(f"map_poi_result.jpg"), cv2.cvtColor(poi_result_img, cv2.COLOR_RGB2BGR))
 
         # 匹配地图模式
         EMPTY_CONSTRUCTION = Construct(type=0, pos=0, is_display=False)
@@ -434,7 +434,7 @@ class MapDetector:
         info(f"Draw overlay image time cost: {time.time() - t:.4f}s")
 
         # 保存结果用于调试
-        img.save(get_appdata_path(f"map_overlay_result.png"))
+        img.convert('RGB').save(get_appdata_path(f"map_overlay_result.jpg"))
 
         return img
 
