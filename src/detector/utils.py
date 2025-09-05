@@ -27,6 +27,14 @@ def paste_cv2(img1: np.ndarray, img2: np.ndarray, pos: tuple[int, int]):
     img1[y:y+h, x:x+w] = img2
 
 def grab_region(sct: MSSBase, region: tuple[int]) -> Image.Image:
+    main_screen = sct.monitors[1]
+    main_screen_offset = (main_screen["left"], main_screen["top"])
+    region = (
+        region[0] + main_screen_offset[0], 
+        region[1] + main_screen_offset[1], 
+        region[2], 
+        region[3],
+    )
     screenshot = sct.grab({
         "left": region[0],
         "top": region[1],
