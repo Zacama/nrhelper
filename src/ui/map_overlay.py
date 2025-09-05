@@ -49,8 +49,8 @@ class MapOverlayWidget(QWidget):
         self.startTimer(20)
 
         self.update_ui_state(MapOverlayUIState(
-            w=100,
-            h=100,
+            w=10,
+            h=10,
             opacity=0.0,
             visible=True,
         ))
@@ -66,9 +66,15 @@ class MapOverlayWidget(QWidget):
         
     def update_ui_state(self, state: MapOverlayUIState):
         if state.x is not None and state.y is not None:
-            self.move(state.x, state.y)
+            self.move(
+                int(state.x / self.devicePixelRatio()),
+                int(state.y / self.devicePixelRatio())
+            )
         if state.w is not None and state.h is not None:
-            self.resize(state.w, state.h)
+            self.resize(
+                int(state.w / self.devicePixelRatio()),
+                int(state.h / self.devicePixelRatio())
+            )
         if state.opacity is not None:
             self.target_opacity = state.opacity
         if state.visible is not None:
