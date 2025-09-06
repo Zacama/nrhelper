@@ -39,9 +39,17 @@ def open_cv2_image(path: str, size: tuple[int, int] | None = None) -> np.ndarray
     return image
 
 
-CHECK_FULL_MAP_STD_SIZE = (150, 150)
+CHECK_FULL_MAP_STD_SIZE = (100, 100)
 
-PREDICT_EARTH_SHIFTING_SIZE = (150, 150)
+PREDICT_EARTH_SHIFTING_SIZE = (100, 100)
+PREDICT_EARTH_SHIFTING_SIZE_REGION = (
+    int(PREDICT_EARTH_SHIFTING_SIZE[0] * 0.2),
+    int(PREDICT_EARTH_SHIFTING_SIZE[1] * 0.2),
+    int(PREDICT_EARTH_SHIFTING_SIZE[0] * 0.6),
+    int(PREDICT_EARTH_SHIFTING_SIZE[1] * 0.6),
+)
+PREDICT_EARTH_SHIFTING_OFFSET_AND_STRIDE = (5, 1)
+PREDICT_EARTH_SHIFTING_SCALES = (0.95, 1.05, 10)
 MAP_BGS = { i : open_cv2_image(f"maps/{i}.jpg") for i in range(6) if i != 4 }
 
 POI_ICON_SCALE = { 30: 0.35, 32: 0.5, 34: 0.4, 37: 0.4, 38: 0.3, 40: 0.4, 41: 0.38, }
@@ -73,13 +81,19 @@ POI_SUBICON_MAP = {
 @dataclass
 class MapDetectParam:
     map_region: tuple[int] | None = None
+    img: np.ndarray | None = None
+    earth_shifting: int | None = None
     do_match_full_map: bool = False
+    do_match_earth_shifting: bool = False
     do_match_pattern: bool = False
 
 
 @dataclass
 class MapDetectResult:
+    img: np.ndarray | None = None
     is_full_map: bool = None
+    earth_shifting: int | None = None
+    earth_shifting_score: float | None = None
     pattern: MapPattern = None
     pattern_score: int = None
     overlay_image: Image.Image = None
@@ -132,19 +146,37 @@ class MapDetector:
             cx, cy, cr = sorted(list(circles[0]), key=lambda x: x[2], reverse=True)[0]
             cv2.circle(img, (int(cx), int(cy)), int(cr), (0, 255, 0), 2)
             cv2.circle(img, (int(cx), int(cy)), 2, (0, 0, 255), 3)
-            error = abs(cx - img.shape[1] / 2) ** 2 + abs(cy - img.shape[0] / 2) ** 2 + abs(cr - img.shape[0] * 0.425) ** 2
+            # cv2.imwrite("sandbox/full_map_test.jpg", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+            error = abs(cr - img.shape[0] * 0.425) ** 2
+        # print(f"Full map match error: {error:.4f}")
         return error
     
     def _match_earth_shifting(self, img: np.ndarray) -> tuple[int, float]:
+        t = time.time()
         img = cv2.resize(img, PREDICT_EARTH_SHIFTING_SIZE, interpolation=CV2_RESIZE_METHOD)
+        x, y, w, h = PREDICT_EARTH_SHIFTING_SIZE_REGION
+        img = img[y:y+h, x:x+w]
         best_map_id, best_score = None, float('inf')
+        offset, stride = PREDICT_EARTH_SHIFTING_OFFSET_AND_STRIDE
+        min_scale, max_scale, scale_num = PREDICT_EARTH_SHIFTING_SCALES
         for map_id, map_img in MAP_BGS.items():
-            map_resized = cv2.resize(map_img, PREDICT_EARTH_SHIFTING_SIZE, interpolation=CV2_RESIZE_METHOD)
-            score = np.mean((img.astype(np.float32) - map_resized.astype(np.float32)) ** 2)
+            score = float('inf')
+            for scale in np.linspace(min_scale, max_scale, scale_num):
+                    size = (int(PREDICT_EARTH_SHIFTING_SIZE[0] * scale), int(PREDICT_EARTH_SHIFTING_SIZE[1] * scale))
+                    map_resized = cv2.resize(map_img, size, interpolation=CV2_RESIZE_METHOD)
+                    for dx in range(-offset, offset+1, stride):
+                        for dy in range(-offset, offset+1, stride):
+                            map_shifted = map_resized[y+dy:y+h+dy, x+dx:x+w+dx]
+                            diff = np.abs((img.astype(np.float32) - map_shifted.astype(np.float32)))
+                            diff[diff > 100] = 0
+                            diff = np.linalg.norm(diff, axis=2)
+                            cur_score = np.median(diff)
+                            score = min(score, cur_score)
             # print(f"map {map_id} score: {score:.4f}")
             if score < best_score:
                 best_score = score
                 best_map_id = map_id
+        info(f"Match earth shifting: best map {best_map_id} score {best_score:.4f}, time cost: {time.time() - t:.4f}s")
         return best_map_id, best_score
     
     def _get_poi_image(self, construct_type: int) -> Image.Image:
@@ -215,13 +247,14 @@ class MapDetector:
         # t.print()
         return best_ctype, best_score
 
-    def _match_map_pattern(self, img: np.ndarray) -> tuple[MapPattern, int]:
+    def _match_map_pattern(self, img: np.ndarray, earth_shifing: int) -> tuple[MapPattern, int]:
+        assert earth_shifing is not None, "earth_shifing should be provided when matching map pattern"
+
         t = time.time()
         img = cv2.resize(img, STD_MAP_SIZE, interpolation=CV2_RESIZE_METHOD)
 
         # 判断特殊地形
         earth_shifting, earth_shifting_score = self._match_earth_shifting(img)
-        info(f"Match map pattern: earth shifting: {earth_shifting} score {earth_shifting_score:.4f}")
 
         # 识别POI
         map_bg = cv2.resize(MAP_BGS[earth_shifting], STD_MAP_SIZE, interpolation=CV2_RESIZE_METHOD)
@@ -312,6 +345,7 @@ class MapDetector:
         # 图片资源和常量
         BOSS1_ICON = open_with_draw_size("icons/boss1.png", (24, 24))
         BOSS2_ICON = open_with_draw_size("icons/boss2.png", (24, 24))
+        CARRIAGE_ICON = open_with_draw_size("icons/carriage.png", (32, 32))
         BOSS1_CTYPES = [
             46510, 46570, 46590, 46620, 46650, 46690,
             46710, 46720, 46770, 46810, 46820, 46860,
@@ -395,6 +429,9 @@ class MapDetector:
             # 法师塔
             if ctype // 100 == 400:
                 texts.append(((x, y), get_name(ctype), FONT_SIZE_SMALL, (210, 255, 200, 255), OUTLINE_W_SMALL, OUTLINE_COLOR))
+            # 马车
+            if ctype // 10 in (4500, 4501):
+                icons.append(((x, y), CARRIAGE_ICON))
             # POI
             if ctype // 1000 in (30, 32, 34, 38):
                 y += scale_size(15)
@@ -431,7 +468,7 @@ class MapDetector:
         for icon in icons:  draw_icon(img, *icon)
         for text in texts:  draw_text(img, *text)
 
-        info(f"Draw overlay image time cost: {time.time() - t:.4f}s")
+        info(f"Draw overlay image size: {draw_size} time cost: {time.time() - t:.4f}s")
 
         # 保存结果用于调试
         img.convert('RGB').save(get_appdata_path(f"map_overlay_result.jpg"))
@@ -455,18 +492,29 @@ class MapDetector:
         if param is None or param.map_region is None:
             return ret
         
-        img = grab_region(sct, param.map_region)
-        img = np.array(img)
+        if param.img is None:
+            img = grab_region(sct, param.map_region)
+            img = np.array(img)
+        else:
+            img = param.img
+        ret.img = img
 
         # 判断是否是全图
         if param.do_match_full_map:
             full_map_error = self._match_full_map(img)
             ret.is_full_map = full_map_error <= config.full_map_error_threshold
-            # print(ret.is_full_map)
+
+        # 判断特殊地形
+        if param.do_match_earth_shifting:
+            earth_shifting, earth_shifting_score = self._match_earth_shifting(img)
+            if earth_shifting_score > config.earth_shifting_error_threshold:
+                earth_shifting = None
+            ret.earth_shifting = earth_shifting
+            ret.earth_shifting_score = earth_shifting_score
 
         # 地图模式匹配
         if param.do_match_pattern:
-            pattern, score = self._match_map_pattern(img)
+            pattern, score = self._match_map_pattern(img, param.earth_shifting)
             ret.pattern = pattern
             ret.pattern_score = score
 

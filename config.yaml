@@ -2,14 +2,14 @@ day_period_seconds: [270, 180, 210, 180]  # 四次缩圈时间段长度(秒)
 deadly_nightrain_seconds: 110             # 雨中冒险持续时间(秒)
 
 update_interval: 0.1  # 界面刷新间隔(秒)
-detect_interval: 0.2  # 自动检测间隔(秒)
+detect_interval: 0.1  # 自动检测间隔(秒)
 
 foward_day_seconds: 10  # 快进一次缩圈时间（秒）
 back_day_seconds: 10    # 后退一次缩圈时间（秒）
 
 time_scale: 1.0   # 时间流逝倍率
 
-template_standard_size: [111, 30] # DAYX模板图片标准尺寸(宽,高)
+template_standard_height: 30      # DAYX模板图片标准高度
 mask_lower_white: [0, 0, 200]     # DAYX模板图片白色掩码下限(BGR)
 mask_upper_white: [179, 90, 255]  # DAYX模板图片白色掩码上限(BGR)
 scale_range: [0.8, 1.2, 20]        # DAYX模板匹配缩放范围(最小比例,最大比例,步数)
@@ -25,9 +25,10 @@ s_tolerance: 30   # 血条颜色匹配饱和度容差
 hp_color_min_area_ratio: 0.1  # 血条颜色区域最小面积占比，小于此值视为无效
 hp_color_max_area_ratio: 0.5  # 血条颜色区域最大面积占比，大于此值认为血条为对应颜色
 
-fixed_map_overlay_draw_size: null   # 固定地图信息绘制尺寸(宽,高)
-map_overlay_draw_size_ratio: 1.0    # 地图信息绘制尺寸相对于原图比例
-full_map_error_threshold: 30        # 判断当前地图是否是完整地图的误差阈值
+fixed_map_overlay_draw_size: null     # 固定地图信息绘制尺寸(宽,高)
+map_overlay_draw_size_ratio: 1.0      # 地图信息绘制尺寸相对于原图比例
+full_map_error_threshold: 5           # 判断当前地图是否是完整地图的误差阈值
+earth_shifting_error_threshold: 35    # 判断特殊地形的误差阈值
 
 bug_report_email: "nroh-report@qq.com"
 

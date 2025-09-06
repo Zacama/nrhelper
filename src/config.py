@@ -25,7 +25,7 @@ class Config:
 
     time_scale: float
 
-    template_standard_size: list[int]
+    template_standard_height: int
     mask_lower_white: list[int]
     mask_upper_white: list[int]
     scale_range: list[float]
@@ -44,6 +44,7 @@ class Config:
     fixed_map_overlay_draw_size: list[int] | None
     map_overlay_draw_size_ratio: float | None
     full_map_error_threshold: float
+    earth_shifting_error_threshold: float
 
     bug_report_email: str
 

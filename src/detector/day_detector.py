@@ -4,11 +4,16 @@ from dataclasses import dataclass
 from PIL import Image
 import time
 from mss.base import MSSBase
+import yaml
 
 from src.config import Config
 from src.logger import info, warning, error
-from src.common import get_asset_path
+from src.common import get_data_path
 from src.detector.utils import resize_by_height_keep_aspect_ratio, grab_region
+
+
+with open(get_data_path("day_template/langs.yaml"), "r", encoding="utf-8") as f:
+    DAYX_DETECT_LANGS: dict[str, str] = yaml.safe_load(f)
 
 
 def get_image_mask(image: Image.Image) -> np.ndarray:
@@ -42,6 +47,7 @@ def match_mask(image: np.ndarray, template: np.ndarray) -> float:
 @dataclass
 class DayDetectParam:
     day1_region: tuple[int] | None = None
+    lang: str | None = None
 
 @dataclass
 class DayDetectResult:
@@ -53,27 +59,44 @@ class DayDetectResult:
     score_day3: float = None
 
 
+@dataclass
+class DayTempalte:
+    lang: str
+    day1_mask: np.ndarray
+    day2_mask: np.ndarray
+    day3_mask: np.ndarray
+    day2_w_ratio: float
+    day3_w_ratio: float
+
+
 class DayDetector:
     def __init__(self):
         config = Config.get()
-        day1_image = Image.open(get_asset_path("day_template/1.png")).convert("RGB")
-        day2_image = Image.open(get_asset_path("day_template/2.png")).convert("RGB")
-        day3_image = Image.open(get_asset_path("day_template/3.png")).convert("RGB")
-        self.day1_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day1_image, config.template_standard_size[1]))
-        self.day2_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day2_image, config.template_standard_size[1]))
-        self.day3_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day3_image, config.template_standard_size[1]))
-        self.day2_w_ratio = self.day2_mask.shape[1] / self.day1_mask.shape[1]
-        self.day3_w_ratio = self.day3_mask.shape[1] / self.day1_mask.shape[1]
+        self.templates: dict[str, DayTempalte] = {}
+        for lang in DAYX_DETECT_LANGS.keys():
+            day1_image = Image.open(get_data_path(f"day_template/{lang}_1.png")).convert("RGB")
+            day2_image = Image.open(get_data_path(f"day_template/{lang}_2.png")).convert("RGB")
+            day3_image = Image.open(get_data_path(f"day_template/{lang}_3.png")).convert("RGB")
+            day1_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day1_image, config.template_standard_height))
+            day2_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day2_image, config.template_standard_height))
+            day3_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day3_image, config.template_standard_height))
+            template = DayTempalte(
+                lang=lang,
+                day1_mask=day1_mask, day2_mask=day2_mask, day3_mask=day3_mask,
+                day2_w_ratio=day2_mask.shape[1] / day1_mask.shape[1],
+                day3_w_ratio=day3_mask.shape[1] / day1_mask.shape[1],
+            )
+            self.templates[lang] = template
 
-    def match(self, sct: MSSBase, day1_region: tuple[int]) -> tuple[bool, float]:
+    def match(self, sct: MSSBase, template: DayTempalte, day1_region: tuple[int]) -> tuple[bool, float]:
         try:
             config = Config.get()
             t = time.time()
             x, y, w, h = day1_region
             cx, cy = x + w // 2, y + h // 2
-            day2_w = int(w * self.day2_w_ratio)
+            day2_w = int(w * template.day2_w_ratio)
             day2_region = (cx - day2_w // 2, cy - h // 2, day2_w, h)
-            day3_w = int(w * self.day3_w_ratio)
+            day3_w = int(w * template.day3_w_ratio)
             day3_region = (cx - day3_w // 2, cy - h // 2, day3_w, h)
             sc = grab_region(sct, day3_region)
             def match_region(region: tuple[int], template_mask: np.ndarray) -> float:
@@ -84,14 +107,14 @@ class DayDetector:
                     region[1] - day3_region[1] + region[3]
                 )
                 img = sc.crop(region)
-                img = resize_by_height_keep_aspect_ratio(img, config.template_standard_size[1])
+                img = resize_by_height_keep_aspect_ratio(img, config.template_standard_height)
                 img_mask = get_image_mask(img)
                 return match_mask(img_mask, template_mask)
-            score_day1 = match_region(day1_region, self.day1_mask)
-            score_day2 = match_region(day2_region, self.day2_mask)
-            score_day3 = match_region(day3_region, self.day3_mask)
+            score_day1 = match_region(day1_region, template.day1_mask)
+            score_day2 = match_region(day2_region, template.day2_mask)
+            score_day3 = match_region(day3_region, template.day3_mask)
             # print("detect dayx time: ", time.time() - t)
-            # print(f"{score_day1:.2f}, {score_day2:.2f}, {score_day3:.2f}")
+            # print(f"lang: {template.lang} {score_day1:.2f}, {score_day2:.2f}, {score_day3:.2f}")
             return score_day1, score_day2, score_day3
         except Exception as e:
             error(f"Detect dayx error")
@@ -102,7 +125,8 @@ class DayDetector:
         config = Config.get()
         if params is None or params.day1_region is None:
             return ret
-        score_day1, score_day2, score_day3 = self.match(sct, params.day1_region)
+        template = self.templates[params.lang]
+        score_day1, score_day2, score_day3 = self.match(sct, template, params.day1_region)
         ret.score_day1 = score_day1
         ret.score_day2 = score_day2
         ret.score_day3 = score_day3

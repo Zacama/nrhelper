@@ -59,6 +59,7 @@ class Updater(QObject):
         self.phase_start_time: float = None
         self.dayx_detect_enabled: bool = True
         self.day1_detect_region = None
+        self.dayx_detect_lang: str = "chs"
         
         self.in_rain_start_time: float = None
         self.in_rain_detect_enabled: bool = True
@@ -188,11 +189,21 @@ class Updater(QObject):
         self.do_match_map_pattern_flag = DoMatchMapPatternFlag.PREPARE
         info("Set to detect map pattern once.")
 
-    def update_map_overlay_image(self, image: Image.Image):
-        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
-            overlay_image=image,
-        ))
-        info("Update map overlay image.")
+    def update_map_overlay_image(self, image: Image.Image | None):
+        if image is None:
+            self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+                clear_image=True,
+            ))
+            info("Clear map overlay image.")
+        else:
+            self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+                overlay_image=image,
+                x=self.map_region[0],
+                y=self.map_region[1],
+                w=self.map_region[2],
+                h=self.map_region[3],
+            ))
+            info("Update map overlay image.")
 
     def show_map_overlay(self):
         self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
@@ -224,6 +235,7 @@ class Updater(QObject):
         if self.dayx_detect_enabled:
             param.day_detect_param = DayDetectParam(
                 day1_region=self.day1_detect_region,
+                lang=self.dayx_detect_lang,
             )
         if self.in_rain_detect_enabled:
             param.rain_detect_param = RainDetectParam(
@@ -254,6 +266,7 @@ class Updater(QObject):
                 self.stop_in_rain()
 
         is_full_map = result.map_detect_result.is_full_map
+        map_img = result.map_detect_result.img
         if is_full_map is not None:
             if is_full_map and not self.current_is_full_map:
                 info("Current map changed to full map.")
@@ -265,26 +278,36 @@ class Updater(QObject):
                 self.hide_map_overlay()
 
         if self.map_detect_enabled:
-            # 隐藏信息显示，等待下一次更新进行识别
             if self.do_match_map_pattern_flag == DoMatchMapPatternFlag.PREPARE:
+                # 隐藏信息显示，等待下一次更新进行识别
                 self.do_match_map_pattern_flag = DoMatchMapPatternFlag.TRUE
-                self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
-                    clear_image=True,
-                ))
+                self.update_map_overlay_image(None)
                 info("Hide overlay and prepared to detect map pattern.")
 
-            # 进行识别
             elif self.do_match_map_pattern_flag == DoMatchMapPatternFlag.TRUE and is_full_map:
-                self.do_match_map_pattern_flag = DoMatchMapPatternFlag.FALSE
-                self.update_map_overlay_image(MapDetector.get_loading_image(self.map_region[2:4]))
+                # 特殊地形识别成功才进行匹配（避免地图半透明时就识别）
                 result = self.detector.detect(DetectParam(
                     map_detect_param=MapDetectParam(
                         map_region=self.map_region,
-                        do_match_pattern=True,
+                        img=map_img,    # 使用之前截取的图片，避免处理过程中画面变化
+                        do_match_earth_shifting=True,
                     )
                 ))
-                self.map_pattern = result.map_detect_result.pattern
-                self.update_map_overlay_image(result.map_detect_result.overlay_image)
+                earth_shifting = result.map_detect_result.earth_shifting
+                if earth_shifting is not None:
+                    # 进行匹配
+                    self.do_match_map_pattern_flag = DoMatchMapPatternFlag.FALSE
+                    self.update_map_overlay_image(MapDetector.get_loading_image(self.map_region[2:4]))
+                    result = self.detector.detect(DetectParam(
+                        map_detect_param=MapDetectParam(
+                            map_region=self.map_region,
+                            img=map_img,
+                            earth_shifting=earth_shifting,
+                            do_match_pattern=True,
+                        )
+                    ))
+                    self.map_pattern = result.map_detect_result.pattern
+                    self.update_map_overlay_image(result.map_detect_result.overlay_image)
 
 
     def run(self):

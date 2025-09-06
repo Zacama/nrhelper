@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QSlider, QGroupBox, QCheckBox, QPushButton,
-    QMessageBox, QApplication, QFrame
+    QMessageBox, QApplication, QFrame, QComboBox,
 )
 from PyQt6.QtGui import QPixmap, QIcon
 import yaml
@@ -19,6 +19,7 @@ from src.config import Config
 from src.ui.overlay import OverlayUIState, OverlayWidget
 from src.ui.input import InputWorker, InputSettingWidget, InputSetting
 from src.ui.screenshot import ScreenShotWindow
+from src.detector.day_detector import DAYX_DETECT_LANGS
 from src.detector.rain_detector import RainDetector
 from src.detector.utils import hls_to_rgb
 from src.ui.bug_report import BugReportWindow
@@ -149,6 +150,16 @@ class SettingsWindow(QWidget):
         self.capture_map_region_input_widget.input_triggered.connect(self.capture_day1_hpbar_region)
         screenshot_region_layout.addWidget(self.capture_map_region_input_widget)
         self.auto_timer_layout.addLayout(screenshot_region_layout)
+
+        self.dayx_detect_lang = "chs"
+        lang_layout = QHBoxLayout()
+        lang_layout.addWidget(QLabel("游戏语言"))
+        self.lang_combobox = QComboBox()
+        self.lang_combobox.addItems(DAYX_DETECT_LANGS.values())
+        self.lang_combobox.setCurrentText(DAYX_DETECT_LANGS[self.dayx_detect_lang])
+        self.lang_combobox.currentTextChanged.connect(self.update_detect_lang)
+        lang_layout.addWidget(self.lang_combobox)
+        self.auto_timer_layout.addLayout(lang_layout)
 
         self.day1_detect_region = None
         self.day1_detect_region_label = QLabel("缩圈检测区域：未设置")
@@ -307,6 +318,7 @@ class SettingsWindow(QWidget):
             self.in_rain_detect_enable_checkbox.setChecked(data.get("in_rain_detect_enabled", True))
             self.not_in_rain_hls = data.get("not_in_rain_hls", None)
             self.in_rain_hls = data.get("in_rain_hls", None)
+            self.lang_combobox.setCurrentText(DAYX_DETECT_LANGS[data.get("dayx_detect_lang", "chs")])
             self.update_day1_hpbar_regions()
             self.update_hp_color()
             self.update_map_region()
@@ -338,6 +350,7 @@ class SettingsWindow(QWidget):
                     "in_rain_detect_enabled": self.in_rain_detect_enable_checkbox.isChecked(),
                     "not_in_rain_hls": self.not_in_rain_hls,
                     "in_rain_hls": self.in_rain_hls,
+                    "dayx_detect_lang": self.dayx_detect_lang,
                 }, f)
             info(f"Saved settings to {SETTINGS_SAVE_PATH}")
         except Exception as e:
@@ -417,7 +430,7 @@ class SettingsWindow(QWidget):
             self.update_day1_hpbar_regions()
 
     def show_capture_day1_hpbar_region_tutorial(self):
-        tutorial_imgs = [QPixmap(str(DETECT_REGION_TUTORIAL_IMG_PATH).format(i=i)) for i in range(1, 7)]
+        tutorial_imgs = [QPixmap(str(DETECT_REGION_TUTORIAL_IMG_PATH).format(i=i)) for i in range(1, 8)]
         img_widgets: list[QLabel] = []
         for img in tutorial_imgs:
             img_widget = QLabel()
@@ -441,7 +454,7 @@ class SettingsWindow(QWidget):
         layout.addLayout(hlayout)
         layout.addWidget(QLabel("3. 点击\"点我并框出 血条 的区域\"按钮，然后用鼠标框选屏幕上的血条区域\n"
                                 "框选的区域如下图所示，需要把血条的纯色内部框进去，尽量不要框到边框\n"
-                                "⚠️即使你画面里的血条可能更长，但也只需要框最左边的一小段！"))
+                                "⚠️即使你画面里的血条可能更长，但也只需要框【最左边的一小段】！"))
         layout.addWidget(img_widgets[3])
         layout.addWidget(QLabel("4. 点击\"点我并框出 DAY I 图标 的区域\"按钮，然后用鼠标框选屏幕上的 DAY I 图标\n"
                                 "框选的区域如下图所示，需要把最左边的D和最右边的I的突出部分也要框进去\n"
@@ -450,10 +463,12 @@ class SettingsWindow(QWidget):
         layout.addWidget(QLabel("5. 最后点击\"保存\"按钮完成设置，在设置界面查看是否显示\"已设置\""))
         layout.addWidget(img_widgets[5])
         layout.addWidget(QLabel("6. 之后正常游玩即可自动计时，若修改游戏分辨率则需要重新框选"))
-        layout.addWidget(QLabel("ℹ️ 缩圈自动计时可能失效的场景：DAY X图标出现时正在浏览背包和地图 / 使用简体中文以外的游戏语言\n"
+        layout.addWidget(QLabel("ℹ️ 缩圈自动计时可能失效的场景：DAY X图标出现时正在浏览背包和地图\n"
                                 "ℹ️ 雨中冒险计时可能失效的场景：丝血 / 开启HDR / 开启画面滤镜"))
         layout.addWidget(QLabel("⚠️ 即使开启了自动检测，仍然推荐设置快捷键作为备用"))
-        layout.addWidget(QLabel("7. 如果雨中冒险检测失效，可能是因为色差，可以尝试设置里的\"校准血条颜色\""))
+        layout.addWidget(QLabel("7. 如果缩圈检测失效，可能是因为游戏语言不同，可以调整设置里的\"游戏语言\""))
+        layout.addWidget(img_widgets[6])
+        layout.addWidget(QLabel("8. 如果雨中冒险检测失效，可能是因为色差，可以尝试设置里的\"校准血条颜色\""))
         msg.layout().addLayout(layout, 0, 0)
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
@@ -470,6 +485,15 @@ class SettingsWindow(QWidget):
             self.hp_bar_detect_region_label.setText("❌未设置雨中冒险检测区域")
         else:
             self.hp_bar_detect_region_label.setText(f"✔️已设置雨中冒险检测区域： {self.hp_bar_detect_region}")
+
+    def update_detect_lang(self):
+        lang_name = self.lang_combobox.currentText()
+        for k, v in DAYX_DETECT_LANGS.items():
+            if v == lang_name:
+                self.dayx_detect_lang = k
+                break
+        self.updater.dayx_detect_lang = self.dayx_detect_lang
+        info(f"DayX detect lang changed to {self.dayx_detect_lang}")
 
     # =========================== In Rain Detect =========================== #
 
@@ -642,14 +666,15 @@ class SettingsWindow(QWidget):
                 screenshot.save(save_path)
             for item in region_result:
                 if item['color'] == COLOR_MAP_REGION:
-                    self.map_region = item['rect']
+                    # 保持正方形
+                    x, y, w, h = item['rect']
+                    self.map_region = (x, y, min(w, h), min(w, h))
             self.update_map_region()
             self.save_settings()
 
-    def clear_map_region(self):
-        pass
-
     def update_map_region(self):
+        if self.updater.map_region != self.map_region:
+            self.updater.set_to_detect_map_pattern_once()
         self.updater.map_region = self.map_region
         info(f"Updated map region: map_region={self.map_region}")
         if self.map_region is None:

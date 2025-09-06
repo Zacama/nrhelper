@@ -32,10 +32,10 @@ class MapOverlayWidget(QWidget):
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool 
+            Qt.WindowType.Tool |
+            Qt.WindowType.WindowTransparentForInput
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         set_widget_always_on_top(self)
 
         self.layout: QVBoxLayout = QVBoxLayout(self)
@@ -56,8 +56,6 @@ class MapOverlayWidget(QWidget):
             opacity=0.0,
             visible=True,
         ))
-
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
     def set_image(self, img: Image.Image | None):
         if img is None:
