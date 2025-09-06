@@ -35,6 +35,7 @@ class MapOverlayWidget(QWidget):
             Qt.WindowType.Tool 
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         set_widget_always_on_top(self)
 
         self.layout: QVBoxLayout = QVBoxLayout(self)
