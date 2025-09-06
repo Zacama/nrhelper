@@ -10,7 +10,10 @@ from dataclasses import dataclass, asdict
 import os
 
 from src.updater import Updater
-from src.common import APP_FULLNAME, get_appdata_path, get_asset_path, ICON_PATH
+from src.common import (
+    APP_FULLNAME, get_appdata_path, 
+    get_asset_path, ICON_PATH, get_desktop_path,
+)
 from src.logger import info, warning, error
 from src.config import Config
 from src.ui.overlay import OverlayUIState, OverlayWidget
@@ -18,6 +21,7 @@ from src.ui.input import InputWorker, InputSettingWidget, InputSetting
 from src.ui.screenshot import ScreenShotWindow
 from src.detector.rain_detector import RainDetector
 from src.detector.utils import hls_to_rgb
+from src.ui.bug_report import BugReportWindow
 
 
 SETTINGS_SAVE_PATH = get_appdata_path("settings.yaml")
@@ -249,6 +253,11 @@ class SettingsWindow(QWidget):
         self.other_layout = QVBoxLayout(self.other_group)
         self.right_layout.addWidget(self.other_group)
 
+        bug_report_button = QPushButton("BUG反馈")
+        bug_report_button.setStyleSheet("padding: 6px;")
+        bug_report_button.clicked.connect(self.open_bug_report_window)
+        self.other_layout.addWidget(bug_report_button)
+
         open_log_button = QPushButton("打开日志位置")
         open_log_button.setStyleSheet("padding: 6px;")
         open_log_button.clicked.connect(self.open_log_directory)
@@ -330,6 +339,7 @@ class SettingsWindow(QWidget):
                     "not_in_rain_hls": self.not_in_rain_hls,
                     "in_rain_hls": self.in_rain_hls,
                 }, f)
+            info(f"Saved settings to {SETTINGS_SAVE_PATH}")
         except Exception as e:
             error(f"Failed to save settings: {e}")
 
@@ -662,4 +672,12 @@ class SettingsWindow(QWidget):
         msg.setText(about_text)
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
-        
+    
+    def open_bug_report_window(self):
+        w = BugReportWindow(
+            log_dir=get_appdata_path(""),
+            export_dir=get_desktop_path(),
+            mail_address=Config.get().bug_report_email,
+            parent=self,
+        )
+        w.show()

@@ -21,6 +21,15 @@ def _get_user_directory() -> Path:
             return Path(os.path.expanduser("~"))
         except Exception:
             return Path(os.environ.get('USERPROFILE', os.environ.get('HOME', 'C:\\')))
+        
+def get_desktop_path() -> str:
+    try:
+        user_dir = _get_user_directory()
+        path = str(user_dir / "Desktop")
+    except Exception:
+        path = str(Path("C:\\") / "temp" / APP_NAME)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return path
 
 def get_appdata_path(path: str) -> str:
     try:

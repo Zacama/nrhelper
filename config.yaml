@@ -29,6 +29,8 @@ fixed_map_overlay_draw_size: null   # 固定地图信息绘制尺寸(宽,高)
 map_overlay_draw_size_ratio: 1.0    # 地图信息绘制尺寸相对于原图比例
 full_map_error_threshold: 30        # 判断当前地图是否是完整地图的误差阈值
 
+bug_report_email: "nroh-report@qq.com"
+
 # 缩圈进度条样式
 day_progress_css: |
   QProgressBar {

@@ -45,6 +45,8 @@ class Config:
     map_overlay_draw_size_ratio: float | None
     full_map_error_threshold: float
 
+    bug_report_email: str
+
     @staticmethod
     def get() -> 'Config':
         global _config, _config_mtime
