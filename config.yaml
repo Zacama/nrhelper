@@ -38,7 +38,7 @@ fixed_map_overlay_draw_size: null     # 固定地图信息绘制尺寸(宽,高)
 map_overlay_draw_size_ratio: 1.0      # 地图信息绘制尺寸相对于原图比例
 full_map_error_threshold: 20          # 判断当前地图是否是完整地图的误差阈值
 earth_shifting_error_threshold: 35    # 判断特殊地形的误差阈值
-map_pattern_match_interval: 900       # 自动地图匹配间隔(秒)
+map_pattern_match_interval: 1800      # 自动地图匹配间隔(秒)
 
 bug_report_email: "nroh-report@qq.com"
 
