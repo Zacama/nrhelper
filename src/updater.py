@@ -336,7 +336,7 @@ class Updater(QObject):
             is_game_foreground = self.check_game_foreground()
 
             if self.get_time() - last_detect_time > self.detect_interval:
-                if is_game_foreground:
+                if not self.only_detect_when_game_foreground or is_game_foreground:
                     self.detect_and_update()
                 last_detect_time = self.get_time()
 
