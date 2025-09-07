@@ -3,6 +3,7 @@ import time
 from enum import Enum
 from PIL import Image
 
+from src.common import GAME_WINDOW_TITLE
 from src.config import Config
 from src.logger import info, warning, error
 from src.ui.overlay import OverlayWidget, OverlayUIState
@@ -16,7 +17,7 @@ from src.detector import (
 )
 from src.detector.map_info import MapPattern
 from src.detector.map_detector import MapDetector
-from enum import Enum
+from src.ui.utils import is_window_in_foreground
 
 
 class DoMatchMapPatternFlag(Enum):
@@ -47,9 +48,10 @@ class Updater(QObject):
         super().__init__()
         self.overlay = overlay
         self.update_overlay_ui_state_signal.connect(self.overlay.update_ui_state)
-
         self.map_overlay = map_overlay
         self.update_map_overlay_ui_state_signal.connect(self.map_overlay.update_ui_state)
+
+        self.detect_interval = 0.2
 
         self.detector = DetectorManager()
         self._running = False
@@ -73,6 +75,8 @@ class Updater(QObject):
         self.do_match_map_pattern_flag: DoMatchMapPatternFlag = DoMatchMapPatternFlag.TRUE
         self.map_pattern: MapPattern = None
         self.map_overlay_visible: bool = False
+
+        self.only_detect_when_game_foreground: bool = False
 
 
     def get_time(self) -> float:
@@ -309,6 +313,17 @@ class Updater(QObject):
                     self.map_pattern = result.map_detect_result.pattern
                     self.update_map_overlay_image(result.map_detect_result.overlay_image)
 
+    
+    def check_game_foreground(self) -> bool:
+        is_foreground = is_window_in_foreground(GAME_WINDOW_TITLE)
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(
+            is_game_foreground=is_foreground,
+        ))
+        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+            is_game_foreground=is_foreground,
+        ))
+        return is_foreground
+
 
     def run(self):
         self._running = True
@@ -318,8 +333,11 @@ class Updater(QObject):
         while self._running:
             start_time = self.get_time()
 
-            if self.get_time() - last_detect_time > Config.get().detect_interval:
-                self.detect_and_update()
+            is_game_foreground = self.check_game_foreground()
+
+            if self.get_time() - last_detect_time > self.detect_interval:
+                if is_game_foreground:
+                    self.detect_and_update()
                 last_detect_time = self.get_time()
 
             self.update_phase()

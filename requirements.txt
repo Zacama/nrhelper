@@ -6,5 +6,4 @@ pygame
 pynput
 mss
 pyinstaller
-# win32gui
-# win32con
+pywin32

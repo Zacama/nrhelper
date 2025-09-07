@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtCore import QThread, Qt
+from PyQt6.QtCore import QThread, Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QAction, QCursor
 from PyQt6.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     overlay = OverlayWidget()
     map_overlay = MapOverlayWidget()
     updater = Updater(overlay, map_overlay)
-    settings_window = SettingsWindow(overlay, updater, input)
+    settings_window = SettingsWindow(overlay, map_overlay, updater, input)
     
     # 创建系统托盘图标和菜单
     tray_icon = QSystemTrayIcon()
@@ -81,12 +81,24 @@ if __name__ == "__main__":
     menu.addAction(quit_action)
     tray_icon.setContextMenu(menu)
     tray_icon.show()
-
-    def show_and_set_menu_pos():
+    
+    def show_menu_at_cursor_pos():
         cursor_pos = QCursor.pos()
         menu.move(cursor_pos)
         menu.show()
-    overlay.right_click_signal.connect(show_and_set_menu_pos)
+    def on_menu_show():
+        overlay.is_menu_opened = True
+        map_overlay.is_menu_opened = True
+        # info("Menu opened")
+    def on_menu_hide():
+        overlay.is_menu_opened = False
+        map_overlay.is_menu_opened = False
+        # info("Menu closed")
+
+    overlay.right_click_signal.connect(show_menu_at_cursor_pos)
+    overlay.right_click_signal.connect(on_menu_show)
+    menu.aboutToShow.connect(on_menu_show)
+    menu.aboutToHide.connect(on_menu_hide)
 
     # 启动输入监听
     input_thread = QThread()

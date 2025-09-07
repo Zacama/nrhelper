@@ -13,7 +13,7 @@ class Config:
     deadly_nightrain_seconds: int
 
     update_interval: float
-    detect_interval: float
+    detect_intervals: dict[str, float]
 
     foward_day_seconds: int
     back_day_seconds: int

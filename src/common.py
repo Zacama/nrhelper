@@ -3,9 +3,11 @@ import os
 
 APP_NAME = "nightreign-overlay-helper"
 APP_NAME_CHS = "黑夜君临悬浮助手"
-APP_VERSION = "0.5.3"
+APP_VERSION = "0.5.4"
 APP_FULLNAME = f"{APP_NAME_CHS}v{APP_VERSION}"
 APP_AUTHER = "NeuraXmy"
+
+GAME_WINDOW_TITLE = "ELDEN RING NIGHTREIGN"
 
 def get_asset_path(path: str) -> str:
     return str(Path("assets") / path)

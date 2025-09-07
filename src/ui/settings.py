@@ -17,6 +17,7 @@ from src.common import (
 from src.logger import info, warning, error
 from src.config import Config
 from src.ui.overlay import OverlayUIState, OverlayWidget
+from src.ui.map_overlay import MapOverlayWidget, MapOverlayUIState
 from src.ui.input import InputWorker, InputSettingWidget, InputSetting
 from src.ui.screenshot import ScreenShotWindow
 from src.detector.day_detector import DAYX_DETECT_LANGS
@@ -31,13 +32,15 @@ COLOR_ALIGN_TUTORIAL_IMG_PATH = get_asset_path("color_align_tutorial/{i}.jpg")
 MAP_DETECT_TUTORIAL_IMG_PATH = get_asset_path("map_detect_tutorial/{i}.jpg")
 
 class SettingsWindow(QWidget):
-    update_ui_state_signal = pyqtSignal(OverlayUIState)
+    update_overlay_ui_state_signal = pyqtSignal(OverlayUIState)
+    update_map_overlay_ui_state_signal = pyqtSignal(MapOverlayUIState)
 
-    def __init__(self, overlay: OverlayWidget, updater: Updater, input: InputWorker):
+    def __init__(self, overlay: OverlayWidget, map_overlay: MapOverlayWidget, updater: Updater, input: InputWorker):
         super().__init__()
         config = Config.get()
         self.overlay = overlay
-        self.update_ui_state_signal.connect(self.overlay.update_ui_state)
+        self.update_overlay_ui_state_signal.connect(overlay.update_ui_state)
+        self.update_map_overlay_ui_state_signal.connect(map_overlay.update_ui_state)
         self.updater = updater
         self.input = input
 
@@ -117,6 +120,30 @@ class SettingsWindow(QWidget):
         self.input_layout.addLayout(in_rain_input_layout)
 
         self.input_layout.addWidget(QLabel("点击按钮修改，支持键盘或手柄组合键"))
+
+
+        # 性能设置
+        self.performance_group = QGroupBox("性能")
+        self.performance_layout = QVBoxLayout(self.performance_group)
+        self.left_layout.addWidget(self.performance_group)
+
+        detect_interval_layout = QHBoxLayout()
+        detect_interval_layout.addWidget(QLabel("自动检测频率"))
+        self.detect_interval_combobox = QComboBox()
+        for k in config.detect_intervals.keys():
+            self.detect_interval_combobox.addItem(k)
+        self.detect_interval_combobox.setCurrentText("高")
+        self.detect_interval_combobox.currentTextChanged.connect(self.update_detect_interval)
+        detect_interval_layout.addWidget(self.detect_interval_combobox)
+        self.performance_layout.addLayout(detect_interval_layout)
+
+        only_show_when_game_foreground_layout = QHBoxLayout()
+        self.only_show_when_game_foreground_checkbox = QCheckBox("仅在游戏时显示和检测")
+        self.only_show_when_game_foreground_checkbox.setChecked(False)
+        self.only_show_when_game_foreground_checkbox.stateChanged.connect(self.update_only_show_when_game_foreground)
+        only_show_when_game_foreground_layout.addWidget(self.only_show_when_game_foreground_checkbox)
+        self.performance_layout.addLayout(only_show_when_game_foreground_layout)
+
 
         # 自动计时设置
         self.auto_timer_group = QGroupBox("自动计时")
@@ -297,7 +324,7 @@ class SettingsWindow(QWidget):
                 warning(f"Settings file not found: {SETTINGS_SAVE_PATH}, using defaults")
             self.size_slider.setValue(data.get("size", 200))
             self.opacity_slider.setValue(data.get("opacity", 60))
-            self.update_ui_state_signal.emit(OverlayUIState(
+            self.update_overlay_ui_state_signal.emit(OverlayUIState(
                 x=data.get("x"),
                 y=data.get("y"),
             ))
@@ -318,7 +345,10 @@ class SettingsWindow(QWidget):
             self.in_rain_detect_enable_checkbox.setChecked(data.get("in_rain_detect_enabled", True))
             self.not_in_rain_hls = data.get("not_in_rain_hls", None)
             self.in_rain_hls = data.get("in_rain_hls", None)
-            self.lang_combobox.setCurrentText(DAYX_DETECT_LANGS[data.get("dayx_detect_lang", "chs")])
+            self.dayx_detect_lang = data.get("dayx_detect_lang", "chs")
+            self.lang_combobox.setCurrentText(DAYX_DETECT_LANGS[self.dayx_detect_lang])
+            self.only_show_when_game_foreground_checkbox.setChecked(data.get("only_show_when_game_foreground", False))
+            self.detect_interval_combobox.setCurrentText(data.get("detect_interval", "高"))
             self.update_day1_hpbar_regions()
             self.update_hp_color()
             self.update_map_region()
@@ -351,6 +381,8 @@ class SettingsWindow(QWidget):
                     "not_in_rain_hls": self.not_in_rain_hls,
                     "in_rain_hls": self.in_rain_hls,
                     "dayx_detect_lang": self.dayx_detect_lang,
+                    "only_show_when_game_foreground": self.only_show_when_game_foreground_checkbox.isChecked(),
+                    "detect_interval": self.detect_interval_combobox.currentText(),
                 }, f)
             info(f"Saved settings to {SETTINGS_SAVE_PATH}")
         except Exception as e:
@@ -358,27 +390,39 @@ class SettingsWindow(QWidget):
 
 
     def showEvent(self, event):
-        self.update_ui_state_signal.emit(OverlayUIState(draggable=True))
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(
+            draggable=True,
+            is_setting_opened=True,
+        ))
+        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+            is_setting_opened=True,
+        ))
         self.load_settings()
         super().showEvent(event)
 
     def closeEvent(self, event):
-        self.update_ui_state_signal.emit(OverlayUIState(draggable=False))
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(
+            draggable=False,
+            is_setting_opened=False,
+        ))
+        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+            is_setting_opened=False,
+        ))
         self.save_settings()
         super().closeEvent(event)
 
     # =========================== Overlay Appearance =========================== #
 
     def change_overlay_size(self, value):
-        self.update_ui_state_signal.emit(OverlayUIState(scale=value / 100.0))
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(scale=value / 100.0))
         info(f"Overlay size changed to {value}")
 
     def change_overlay_opacity(self, value):
-        self.update_ui_state_signal.emit(OverlayUIState(opacity=value / 100.0))
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(opacity=value / 100.0))
         info(f"Overlay opacity changed to {value}")
 
     def set_overlay_position_center(self):
-        self.update_ui_state_signal.emit(OverlayUIState(set_x_to_center=True))
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(set_x_to_center=True))
         info("Overlay position set to center")
 
     # =========================== DayX Detect =========================== #
@@ -681,6 +725,22 @@ class SettingsWindow(QWidget):
             self.map_region_label.setText("❌未设置地图区域")
         else:
             self.map_region_label.setText(f"✔️已设置地图区域：{self.map_region}")
+
+    # =========================== Performance =========================== #
+
+    def update_detect_interval(self, text: str):
+        config = Config.get()
+        detect_interval = config.detect_intervals.get(text, 0.2)
+        self.updater.detect_interval = detect_interval
+        info(f"Detect interval changed to {detect_interval} seconds ({text})")
+        self.save_settings()
+
+    def update_only_show_when_game_foreground(self, state):
+        enabled = self.only_show_when_game_foreground_checkbox.isChecked()
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(only_show_when_game_foreground=enabled))
+        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(only_show_when_game_foreground=enabled))
+        self.updater.only_detect_when_game_foreground = enabled
+        info(f"Overlay only show when game foreground: {enabled}")
 
     # =========================== Other =========================== #
     

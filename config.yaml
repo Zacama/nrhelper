@@ -2,7 +2,12 @@ day_period_seconds: [270, 180, 210, 180]  # 四次缩圈时间段长度(秒)
 deadly_nightrain_seconds: 110             # 雨中冒险持续时间(秒)
 
 update_interval: 0.1  # 界面刷新间隔(秒)
-detect_interval: 0.1  # 自动检测间隔(秒)
+
+# 自动检测间隔(秒)
+detect_intervals:
+  低: 0.5
+  中: 0.2
+  高: 0.1
 
 foward_day_seconds: 10  # 快进一次缩圈时间（秒）
 back_day_seconds: 10    # 后退一次缩圈时间（秒）

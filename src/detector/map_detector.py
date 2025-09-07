@@ -403,7 +403,7 @@ class MapDetector:
             x, y = pos
             ctype = construct.type
             # boss
-            if ctype // 1000 in (45, 46) and ctype // 100 != 460 and (ctype == 45510 or ctype // 1000 != 45):
+            if ctype // 1000 in (45, 46) and ctype // 100 != 460 and (ctype == 45510 or ctype // 1000 != 45) and ctype not in (46780,):
                 name = get_name(ctype)
                 if pos == MAIN_CASTLE_UPPERFLOOR_POS:   
                     y -= scale_size(10)
@@ -453,11 +453,10 @@ class MapDetector:
             frenzy = open_with_draw_size(f"frenzy/Frenzy_{pattern.evpat_flag}.png", (800, 800))
             icons.append((scale_size((375, 375)), frenzy))
 
-        # 腐败恩惠
+        # 腐败庇佑
         if pos := ROTREW_POS.get(pattern.rot_rew):
-            pos = scale_size(pos)
             icons.append((pos, ROTREW_ICON))
-            texts.append(((pos[0], pos[1] + scale_size(20)), "恩惠", FONT_SIZE_SMALL, (255, 200, 200, 255), OUTLINE_W_SMALL, OUTLINE_COLOR))
+            texts.append(((pos[0], pos[1] + scale_size(20)), "庇佑", FONT_SIZE_SMALL, (255, 200, 200, 255), OUTLINE_W_SMALL, OUTLINE_COLOR))
 
         # 说明文本
         text = f"#{pattern.id}    {get_name(pattern.nightlord + 100000)}"

@@ -8,10 +8,10 @@ from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor, QPixmap, QImage
 from PIL import Image
 
-from src.common import APP_FULLNAME, APP_AUTHER
+from src.common import APP_FULLNAME, APP_AUTHER, GAME_WINDOW_TITLE
 from src.config import Config
 from src.logger import info, warning, error
-from src.ui.utils import set_widget_always_on_top
+from src.ui.utils import set_widget_always_on_top, is_window_in_foreground
 
 
 @dataclass
@@ -25,6 +25,12 @@ class MapOverlayUIState:
     overlay_image: Image.Image | None = None
     clear_image: bool = False
 
+    only_show_when_game_foreground: bool | None = None
+    is_game_foreground: bool | None = None
+    is_menu_opened: bool | None = None
+    is_setting_opened: bool | None = None
+
+
 
 class MapOverlayWidget(QWidget):
     def __init__(self):
@@ -37,6 +43,7 @@ class MapOverlayWidget(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         set_widget_always_on_top(self)
+        self.startTimer(50)
 
         self.layout: QVBoxLayout = QVBoxLayout(self)
         self.label = QLabel()
@@ -48,7 +55,11 @@ class MapOverlayWidget(QWidget):
         self.target_opacity = 1.0
         self.real_opacity = 1.0
 
-        self.startTimer(20)
+        self.visible = True
+        self.only_show_when_game_foreground = False
+        self.is_game_foreground = False
+        self.is_menu_opened = False
+        self.is_setting_opened = False
 
         self.update_ui_state(MapOverlayUIState(
             w=10,
@@ -81,20 +92,25 @@ class MapOverlayWidget(QWidget):
         if state.opacity is not None:
             self.target_opacity = state.opacity
         if state.visible is not None:
-            if state.visible:
-                self.show()
-            else:
-                self.hide()
+            self.visible = state.visible
         if state.overlay_image is not None:
             self.set_image(state.overlay_image)
         if state.clear_image:
             self.set_image(None)
+        if state.only_show_when_game_foreground is not None:
+            self.only_show_when_game_foreground = state.only_show_when_game_foreground
+        if state.is_game_foreground is not None:
+            self.is_game_foreground = state.is_game_foreground
+        if state.is_menu_opened is not None:
+            self.is_menu_opened = state.is_menu_opened
+        if state.is_setting_opened is not None:
+            self.is_setting_opened = state.is_setting_opened
         self.update()
 
 
     def timerEvent(self, event):
         threshold = 0.01
-        step = 0.2
+        step = 0.6
         dlt = self.target_opacity - self.real_opacity
         if abs(dlt) > threshold:
             self.real_opacity += dlt * step
@@ -102,3 +118,13 @@ class MapOverlayWidget(QWidget):
         elif 0 < abs(dlt) <= threshold:
             self.real_opacity = self.target_opacity
             self.setWindowOpacity(self.real_opacity)
+
+        visible = self.visible
+        if self.only_show_when_game_foreground:
+            visible = visible and (self.is_game_foreground or self.is_menu_opened or self.is_setting_opened)
+        if visible and not self.isVisible():
+            self.show()
+        elif not visible and self.isVisible():
+            self.hide()
+
+        

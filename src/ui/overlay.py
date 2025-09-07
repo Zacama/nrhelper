@@ -28,6 +28,11 @@ class OverlayUIState:
     progress2_visible: bool | None = None
     set_x_to_center: bool = False
 
+    only_show_when_game_foreground: bool | None = None
+    is_game_foreground: bool | None = None
+    is_menu_opened: bool | None = None
+    is_setting_opened: bool | None = None
+
 
 class OverlayWidget(QWidget):
     double_click_signal = pyqtSignal()
@@ -43,6 +48,7 @@ class OverlayWidget(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         set_widget_always_on_top(self)
+        self.startTimer(50)
         
         self.layout: QVBoxLayout = QVBoxLayout(self)
 
@@ -92,6 +98,12 @@ class OverlayWidget(QWidget):
         self.text_css = Config.get().day_text_css
         self.progress2_css = Config.get().in_rain_progress_css
         self.text2_css = Config.get().in_rain_text_css
+
+        self.visible = True
+        self.only_show_when_game_foreground = False
+        self.is_game_foreground = False
+        self.is_menu_opened = False
+        self.is_setting_opened = False
        
         self.update_ui_state(OverlayUIState(
             scale=1.0,
@@ -172,10 +184,7 @@ class OverlayWidget(QWidget):
         if state.draggable is not None:
             self._set_draggable(state.draggable)
         if state.visible is not None:
-            if state.visible:
-                self.show()
-            else:
-                self.hide()
+            self.visible = state.visible
         if state.progress2 is not None:
             self.progress_bar2.setValue(int(state.progress2 * self.progress_bar2.maximum()))
         if state.text2 is not None:
@@ -187,4 +196,23 @@ class OverlayWidget(QWidget):
             else:
                 self.progress_bar2.hide()
                 self.label2.hide()
+        if state.only_show_when_game_foreground is not None:
+            self.only_show_when_game_foreground = state.only_show_when_game_foreground
+        if state.is_game_foreground is not None:
+            self.is_game_foreground = state.is_game_foreground
+        if state.is_menu_opened is not None:
+            self.is_menu_opened = state.is_menu_opened
+        if state.is_setting_opened is not None:
+            self.is_setting_opened = state.is_setting_opened
         self.update()
+
+    def timerEvent(self, event):
+        visible = self.visible
+        if self.only_show_when_game_foreground:
+            visible = visible and (self.is_game_foreground or self.is_menu_opened or self.is_setting_opened)
+        if visible and not self.isVisible():
+            self.show()
+        elif not visible and self.isVisible():
+            self.hide()
+            
+                  
