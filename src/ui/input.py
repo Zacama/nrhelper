@@ -37,7 +37,7 @@ class InputWorker(QObject):
         # 处理普通字符键
         if isinstance(key, keyboard.KeyCode):
             # key.char 可能是 None，或者是一个控制字符
-            if key.char:
+            if ord(key.char) < 128:
                 char_ord = ord(key.char)
                 # 检查是否为 Ctrl+[a-z] 生成的控制字符 (ASCII 1-26)
                 if 1 <= char_ord <= 26:
@@ -46,6 +46,8 @@ class InputWorker(QObject):
                 
                 # 如果是其他可打印字符，直接返回
                 return key.char
+            else:
+                return None
         
         # 作为后备，返回按键的字符串表示
         return str(key)

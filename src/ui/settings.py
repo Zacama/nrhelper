@@ -173,9 +173,9 @@ class SettingsWindow(QWidget):
 
         screenshot_region_layout = QHBoxLayout()
         screenshot_region_layout.addWidget(QLabel("截取检测区域快捷键"))
-        self.capture_map_region_input_widget = InputSettingWidget(self.input)
-        self.capture_map_region_input_widget.input_triggered.connect(self.capture_day1_hpbar_region)
-        screenshot_region_layout.addWidget(self.capture_map_region_input_widget)
+        self.capture_dayx_hpbar_region_input_widget = InputSettingWidget(self.input)
+        self.capture_dayx_hpbar_region_input_widget.input_triggered.connect(self.capture_day1_hpbar_region)
+        screenshot_region_layout.addWidget(self.capture_dayx_hpbar_region_input_widget)
         self.auto_timer_layout.addLayout(screenshot_region_layout)
 
         self.dayx_detect_lang = "chs"
@@ -195,14 +195,6 @@ class SettingsWindow(QWidget):
         self.hp_bar_detect_region = None
         self.hp_bar_detect_region_label = QLabel("雨中冒险检测区域：未设置")
         self.auto_timer_layout.addWidget(self.hp_bar_detect_region_label)
-
-        # clear_button_layout = QHBoxLayout()
-        # clear_button = QPushButton("清空检测区域")
-        # clear_button.setStyleSheet("padding: 6px;")
-        # clear_button.clicked.connect(self.clear_day1_hpbar_region)
-        # clear_button_layout.addWidget(clear_button)
-        # clear_button_layout.addStretch()
-        # self.auto_timer_layout.addLayout(clear_button_layout)
 
         hp_color_help_layout = QHBoxLayout()
         hp_color_help_button = QPushButton("查看校准血条颜色帮助")
@@ -322,36 +314,41 @@ class SettingsWindow(QWidget):
             else:
                 data = {}
                 warning(f"Settings file not found: {SETTINGS_SAVE_PATH}, using defaults")
+            # 外观
             self.size_slider.setValue(data.get("size", 200))
             self.opacity_slider.setValue(data.get("opacity", 60))
             self.update_overlay_ui_state_signal.emit(OverlayUIState(
                 x=data.get("x"),
                 y=data.get("y"),
             ))
+            # 快捷键
             self.day_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("day_input_setting")))
-            self.in_rain_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("in_rain_input_setting")))
-            self.capture_map_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("screenshot_region_input_setting")))
             self.forward_day_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("forward_day_input_setting")))
             self.back_day_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("back_day_input_setting")))
-            self.align_to_detect_hp_color_input_widget.set_setting(InputSetting.load_from_dict(data.get("align_to_detect_hp_color_input_setting")))
-            self.map_detect_enable_checkbox.setChecked(data.get("map_detect_enabled", True))
-            self.show_map_overlay_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("show_map_overlay_input_setting")))
-            self.capture_map_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_map_region_input_setting")))
-            self.set_to_detect_map_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("set_to_detect_map_input_setting")))
-            self.map_region = data.get("map_region", None)
-            self.day1_detect_region = data.get("day1_detect_region", None)
-            self.hp_bar_detect_region = data.get("hp_bar_detect_region", None)
-            self.dayx_detect_enable_checkbox.setChecked(data.get("dayx_detect_enabled", True))
-            self.in_rain_detect_enable_checkbox.setChecked(data.get("in_rain_detect_enabled", True))
-            self.not_in_rain_hls = data.get("not_in_rain_hls", None)
-            self.in_rain_hls = data.get("in_rain_hls", None)
-            self.dayx_detect_lang = data.get("dayx_detect_lang", "chs")
-            self.lang_combobox.setCurrentText(DAYX_DETECT_LANGS[self.dayx_detect_lang])
+            self.in_rain_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("in_rain_input_setting")))
+            # 性能
             self.only_show_when_game_foreground_checkbox.setChecked(data.get("only_show_when_game_foreground", False))
             self.detect_interval_combobox.setCurrentText(data.get("detect_interval", "高"))
+            # 自动计时
+            self.dayx_detect_enable_checkbox.setChecked(data.get("dayx_detect_enabled", True))
+            self.in_rain_detect_enable_checkbox.setChecked(data.get("in_rain_detect_enabled", True))
+            self.capture_dayx_hpbar_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_dayx_hpbar_region_input_setting")))
+            self.dayx_detect_lang = data.get("dayx_detect_lang", "chs")
+            self.lang_combobox.setCurrentText(DAYX_DETECT_LANGS[self.dayx_detect_lang])
+            self.day1_detect_region = data.get("day1_detect_region", None)
+            self.hp_bar_detect_region = data.get("hp_bar_detect_region", None)
             self.update_day1_hpbar_regions()
+            self.align_to_detect_hp_color_input_widget.set_setting(InputSetting.load_from_dict(data.get("align_to_detect_hp_color_input_setting")))
+            self.not_in_rain_hls = data.get("not_in_rain_hls", None)
+            self.in_rain_hls = data.get("in_rain_hls", None)
             self.update_hp_color()
+            # 地图识别
+            self.map_detect_enable_checkbox.setChecked(data.get("map_detect_enabled", True))
+            self.capture_map_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_map_region_input_setting")))
+            self.map_region = data.get("map_region", None)
             self.update_map_region()
+            self.set_to_detect_map_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("set_to_detect_map_input_setting")))
+            self.show_map_overlay_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("show_map_overlay_input_setting")))
         except Exception as e:
             error(f"Failed to load settings: {e}")
 
@@ -359,30 +356,35 @@ class SettingsWindow(QWidget):
         try:
             with open(SETTINGS_SAVE_PATH, "w") as f:
                 yaml.safe_dump({
+                    # 外观
                     "size": self.size_slider.value(),
                     "opacity": self.opacity_slider.value(),
                     "x": self.overlay.x(),
                     "y": self.overlay.y(),
+                    # 快捷键
                     "day_input_setting": asdict(self.day_input_setting_widget.get_setting()),
-                    "in_rain_input_setting": asdict(self.in_rain_input_setting_widget.get_setting()),
-                    "screenshot_region_input_setting": asdict(self.capture_map_region_input_widget.get_setting()),
                     "forward_day_input_setting": asdict(self.forward_day_input_setting_widget.get_setting()),
                     "back_day_input_setting": asdict(self.back_day_input_setting_widget.get_setting()),
-                    "align_to_detect_hp_color_input_setting": asdict(self.align_to_detect_hp_color_input_widget.get_setting()),
-                    "map_detect_enabled": self.map_detect_enable_checkbox.isChecked(),
-                    "show_map_overlay_input_setting": asdict(self.show_map_overlay_input_setting_widget.get_setting()),
-                    "capture_map_region_input_setting": asdict(self.capture_map_region_input_widget.get_setting()),
-                    "set_to_detect_map_input_setting": asdict(self.set_to_detect_map_input_setting_widget.get_setting()),
-                    "map_region": self.map_region,
-                    "day1_detect_region": self.day1_detect_region,
-                    "hp_bar_detect_region": self.hp_bar_detect_region,
-                    "dayx_detect_enabled": self.dayx_detect_enable_checkbox.isChecked(),
-                    "in_rain_detect_enabled": self.in_rain_detect_enable_checkbox.isChecked(),
-                    "not_in_rain_hls": self.not_in_rain_hls,
-                    "in_rain_hls": self.in_rain_hls,
-                    "dayx_detect_lang": self.dayx_detect_lang,
+                    "in_rain_input_setting": asdict(self.in_rain_input_setting_widget.get_setting()),
+                    # 性能
                     "only_show_when_game_foreground": self.only_show_when_game_foreground_checkbox.isChecked(),
                     "detect_interval": self.detect_interval_combobox.currentText(),
+                    # 自动计时
+                    "dayx_detect_enabled": self.dayx_detect_enable_checkbox.isChecked(),
+                    "in_rain_detect_enabled": self.in_rain_detect_enable_checkbox.isChecked(),
+                    "capture_dayx_hpbar_region_input_setting": asdict(self.capture_dayx_hpbar_region_input_widget.get_setting()),
+                    "dayx_detect_lang": self.dayx_detect_lang,
+                    "day1_detect_region": self.day1_detect_region,
+                    "hp_bar_detect_region": self.hp_bar_detect_region,
+                    "align_to_detect_hp_color_input_setting": asdict(self.align_to_detect_hp_color_input_widget.get_setting()),
+                    "not_in_rain_hls": self.not_in_rain_hls,
+                    "in_rain_hls": self.in_rain_hls,
+                    # 地图识别
+                    "map_detect_enabled": self.map_detect_enable_checkbox.isChecked(),
+                    "capture_map_region_input_setting": asdict(self.capture_map_region_input_widget.get_setting()),
+                    "map_region": self.map_region,
+                    "set_to_detect_map_input_setting": asdict(self.set_to_detect_map_input_setting_widget.get_setting()),
+                    "show_map_overlay_input_setting": asdict(self.show_map_overlay_input_setting_widget.get_setting()),
                 }, f)
             info(f"Saved settings to {SETTINGS_SAVE_PATH}")
         except Exception as e:
@@ -458,9 +460,9 @@ class SettingsWindow(QWidget):
                 screenshot.save(save_path)
             for item in region_result:
                 if item['color'] == COLOR_HP_BAR:
-                    self.hp_bar_detect_region = item['rect']
+                    self.hp_bar_detect_region = list(item['rect'])
                 elif item['color'] == COLOR_DAY_I:
-                    self.day1_detect_region = item['rect']
+                    self.day1_detect_region = list(item['rect'])
             self.update_day1_hpbar_regions()
             self.save_settings()
 
@@ -712,8 +714,8 @@ class SettingsWindow(QWidget):
                 if item['color'] == COLOR_MAP_REGION:
                     # 保持正方形
                     x, y, w, h = item['rect']
-                    self.map_region = (x, y, min(w, h), min(w, h))
-            self.update_map_region()
+                    self.map_region = list((x, y, min(w, h), min(w, h)))
+                self.update_map_region()
             self.save_settings()
 
     def update_map_region(self):
