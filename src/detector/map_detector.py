@@ -136,7 +136,7 @@ class MapDetector:
             cv2.HOUGH_GRADIENT, 
             dp=1, 
             minDist=20,
-            param1=250, 
+            param1=200, 
             param2=30, 
             minRadius=int(img.shape[0] * 0.4), 
             maxRadius=int(img.shape[0] * 0.5)

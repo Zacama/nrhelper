@@ -73,12 +73,16 @@ if __name__ == "__main__":
 
     menu = QMenu()
     settings_action = QAction("设置")
-    settings_action.triggered.connect(settings_window.show)
+    def show_settings():
+        settings_window.show()
+        settings_window.activateWindow()
+        settings_window.raise_()
+    settings_action.triggered.connect(show_settings)
+    menu.addAction(settings_action)
     quit_action = QAction("退出")
     quit_action.triggered.connect(app.quit)
-    menu.addAction(settings_action)
-    menu.addSeparator()
     menu.addAction(quit_action)
+    menu.addSeparator()
     tray_icon.setContextMenu(menu)
     tray_icon.show()
     

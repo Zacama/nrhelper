@@ -8,11 +8,13 @@ from PyQt6.QtGui import QPixmap, QIcon
 import yaml
 from dataclasses import dataclass, asdict
 import os
+import ctypes
 
 from src.updater import Updater
 from src.common import (
-    APP_FULLNAME, get_appdata_path, 
-    get_asset_path, ICON_PATH, get_desktop_path,
+    APP_FULLNAME, APP_NAME, APP_VERSION,
+    get_appdata_path, get_asset_path, get_desktop_path,
+    ICON_PATH, 
 )
 from src.logger import info, warning, error
 from src.config import Config
@@ -20,7 +22,6 @@ from src.ui.overlay import OverlayUIState, OverlayWidget
 from src.ui.map_overlay import MapOverlayWidget, MapOverlayUIState
 from src.ui.input import InputWorker, InputSettingWidget, InputSetting
 from src.ui.screenshot import ScreenShotWindow
-from src.detector.day_detector import DAYX_DETECT_LANGS
 from src.detector.rain_detector import RainDetector
 from src.detector.utils import hls_to_rgb
 from src.ui.bug_report import BugReportWindow
@@ -45,6 +46,11 @@ class SettingsWindow(QWidget):
         self.input = input
 
         self.setWindowIcon(QIcon(ICON_PATH))
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(f'{APP_NAME}.{APP_VERSION}')
+        except Exception as e:
+            warning(f"Failed to set AppUserModelID: {e}")
+
         self.setWindowTitle(f"{APP_FULLNAME} - 设置")
         self.setMinimumSize(350, 200)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
@@ -182,8 +188,8 @@ class SettingsWindow(QWidget):
         lang_layout = QHBoxLayout()
         lang_layout.addWidget(QLabel("游戏语言"))
         self.lang_combobox = QComboBox()
-        self.lang_combobox.addItems(DAYX_DETECT_LANGS.values())
-        self.lang_combobox.setCurrentText(DAYX_DETECT_LANGS[self.dayx_detect_lang])
+        self.lang_combobox.addItems(config.dayx_detect_langs.values())
+        self.lang_combobox.setCurrentText(config.dayx_detect_langs[self.dayx_detect_lang])
         self.lang_combobox.currentTextChanged.connect(self.update_detect_lang)
         lang_layout.addWidget(self.lang_combobox)
         self.auto_timer_layout.addLayout(lang_layout)
@@ -307,6 +313,7 @@ class SettingsWindow(QWidget):
 
     def load_settings(self):
         try:
+            config = Config.get()
             if os.path.exists(SETTINGS_SAVE_PATH):
                 with open(SETTINGS_SAVE_PATH, "r") as f:
                     data: dict = yaml.safe_load(f)
@@ -334,7 +341,7 @@ class SettingsWindow(QWidget):
             self.in_rain_detect_enable_checkbox.setChecked(data.get("in_rain_detect_enabled", True))
             self.capture_dayx_hpbar_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_dayx_hpbar_region_input_setting")))
             self.dayx_detect_lang = data.get("dayx_detect_lang", "chs")
-            self.lang_combobox.setCurrentText(DAYX_DETECT_LANGS[self.dayx_detect_lang])
+            self.lang_combobox.setCurrentText(config.dayx_detect_langs[self.dayx_detect_lang])
             self.day1_detect_region = data.get("day1_detect_region", None)
             self.hp_bar_detect_region = data.get("hp_bar_detect_region", None)
             self.update_day1_hpbar_regions()
@@ -533,8 +540,9 @@ class SettingsWindow(QWidget):
             self.hp_bar_detect_region_label.setText(f"✔️已设置雨中冒险检测区域： {self.hp_bar_detect_region}")
 
     def update_detect_lang(self):
+        config = Config.get()
         lang_name = self.lang_combobox.currentText()
-        for k, v in DAYX_DETECT_LANGS.items():
+        for k, v in config.dayx_detect_langs.items():
             if v == lang_name:
                 self.dayx_detect_lang = k
                 break

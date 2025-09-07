@@ -12,10 +12,6 @@ from src.common import get_data_path
 from src.detector.utils import resize_by_height_keep_aspect_ratio, grab_region
 
 
-with open(get_data_path("day_template/langs.yaml"), "r", encoding="utf-8") as f:
-    DAYX_DETECT_LANGS: dict[str, str] = yaml.safe_load(f)
-
-
 def get_image_mask(image: Image.Image) -> np.ndarray:
     config = Config.get()
     image_np = np.array(image)
@@ -73,13 +69,16 @@ class DayDetector:
     def __init__(self):
         config = Config.get()
         self.templates: dict[str, DayTempalte] = {}
-        for lang in DAYX_DETECT_LANGS.keys():
+        for lang in config.dayx_detect_langs.keys():
             day1_image = Image.open(get_data_path(f"day_template/{lang}_1.png")).convert("RGB")
             day2_image = Image.open(get_data_path(f"day_template/{lang}_2.png")).convert("RGB")
             day3_image = Image.open(get_data_path(f"day_template/{lang}_3.png")).convert("RGB")
             day1_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day1_image, config.template_standard_height))
             day2_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day2_image, config.template_standard_height))
             day3_mask = get_image_mask(resize_by_height_keep_aspect_ratio(day3_image, config.template_standard_height))
+            # cv2.imwrite(f"sandbox/debug_day1_{lang}.png", day1_mask)
+            # cv2.imwrite(f"sandbox/debug_day2_{lang}.png", day2_mask)
+            # cv2.imwrite(f"sandbox/debug_day3_{lang}.png", day3_mask)
             template = DayTempalte(
                 lang=lang,
                 day1_mask=day1_mask, day2_mask=day2_mask, day3_mask=day3_mask,

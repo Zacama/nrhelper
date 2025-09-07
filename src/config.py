@@ -30,6 +30,7 @@ class Config:
     mask_upper_white: list[int]
     scale_range: list[float]
     dayx_score_threshold: float
+    dayx_detect_langs: dict[str, str]
 
     lower_hls_not_in_rain: list[int]
     upper_hls_not_in_rain: list[int]
@@ -45,6 +46,7 @@ class Config:
     map_overlay_draw_size_ratio: float | None
     full_map_error_threshold: float
     earth_shifting_error_threshold: float
+    map_pattern_match_interval: float
 
     bug_report_email: str
 

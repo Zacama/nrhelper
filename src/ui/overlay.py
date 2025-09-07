@@ -13,6 +13,9 @@ from src.logger import info, warning, error
 from src.ui.utils import set_widget_always_on_top
 
 
+INITIAL_TEXT = f"{APP_FULLNAME} by {APP_AUTHER} (右键打开菜单)"
+
+
 @dataclass
 class OverlayUIState:
     x: int | None = None
@@ -27,6 +30,7 @@ class OverlayUIState:
     text2: str | None = None
     progress2_visible: bool | None = None
     set_x_to_center: bool = False
+    map_pattern_match_text: str | None = None
 
     only_show_when_game_foreground: bool | None = None
     is_game_foreground: bool | None = None
@@ -66,6 +70,8 @@ class OverlayWidget(QWidget):
             self.progress_bar_layout.setStretchFactor(progress_bar, length)
         self.layout.addLayout(self.progress_bar_layout)
 
+        self.text = ""
+        self.map_pattern_match_text = ""
         self.label = QLabel()
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         shadow_effect = QGraphicsDropShadowEffect()
@@ -110,7 +116,8 @@ class OverlayWidget(QWidget):
             opacity=0.6,
             draggable=False,
             progress=0,
-            text=f"{APP_FULLNAME} by {APP_AUTHER} (右键打开菜单)",
+            text=INITIAL_TEXT,
+            map_pattern_match_text="",
             visible=True,
             progress2=0,
             text2="",
@@ -180,7 +187,13 @@ class OverlayWidget(QWidget):
                 progress = min(1, max(0, (state.progress - i)))
                 self.progress_bars[i].setValue(int(progress * self.progress_bars[i].maximum()))
         if state.text is not None:
-            self.label.setText(state.text)
+            self.text = state.text
+            self.label.setText(self.text + self.map_pattern_match_text 
+                               if self.text != INITIAL_TEXT else INITIAL_TEXT)
+        if state.map_pattern_match_text is not None:
+            self.map_pattern_match_text = state.map_pattern_match_text
+            self.label.setText(self.text + self.map_pattern_match_text
+                                 if self.text != INITIAL_TEXT else INITIAL_TEXT)
         if state.draggable is not None:
             self._set_draggable(state.draggable)
         if state.visible is not None:
