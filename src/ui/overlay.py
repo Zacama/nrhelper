@@ -207,7 +207,7 @@ class OverlayWidget(QWidget):
         self.update()
 
     def timerEvent(self, event):
-        visible = self.visible
+        visible = self.visible and self.windowOpacity() > 0.01
         if self.only_show_when_game_foreground:
             visible = visible and (self.is_game_foreground or self.is_menu_opened or self.is_setting_opened)
         if visible and not self.isVisible():
