@@ -44,6 +44,7 @@ class Config:
 
     fixed_map_overlay_draw_size: list[int] | None
     map_overlay_draw_size_ratio: float | None
+    full_map_hough_circle_thres: list[int]
     full_map_error_threshold: float
     earth_shifting_error_threshold: float
     map_pattern_match_interval: float
