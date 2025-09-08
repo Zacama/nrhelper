@@ -1,9 +1,10 @@
 from pathlib import Path
 import os
+from datetime import timedelta
 
 APP_NAME = "nightreign-overlay-helper"
 APP_NAME_CHS = "黑夜君临悬浮助手"
-APP_VERSION = "0.6.1"
+APP_VERSION = "0.6.2"
 APP_FULLNAME = f"{APP_NAME_CHS}v{APP_VERSION}"
 APP_AUTHER = "NeuraXmy"
 
@@ -46,3 +47,15 @@ def get_appdata_path(path: str) -> str:
     return path
 
 ICON_PATH = get_asset_path("icon.ico")
+
+
+def get_readable_timedelta(t: timedelta) -> str:
+    seconds = int(t.total_seconds())
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours > 0:
+        return f"{hours}小时{minutes}分钟{seconds}秒"
+    elif minutes > 0:
+        return f"{minutes}分钟{seconds}秒"
+    else:
+        return f"{seconds}秒"

@@ -29,28 +29,35 @@ class InputWorker(QObject):
 
     def _get_key_identifier(self, key):
         """一个健壮的方法，用于从 pynput 的 key 对象中获取可读的标识符。"""
-        # 处理特殊键 (Ctrl, Alt, Shift, F1, 等)
-        if isinstance(key, keyboard.Key):
-            # 返回按键名称，例如 'ctrl_l', 'esc'
-            return key.name
-
-        # 处理普通字符键
-        if isinstance(key, keyboard.KeyCode):
-            # key.char 可能是 None，或者是一个控制字符
-            if ord(key.char) < 128:
-                char_ord = ord(key.char)
-                # 检查是否为 Ctrl+[a-z] 生成的控制字符 (ASCII 1-26)
-                if 1 <= char_ord <= 26:
-                    # 将其转换回对应的字母 'a'-'z'
-                    return chr(char_ord + 96) 
-                
-                # 如果是其他可打印字符，直接返回
-                return key.char
-            else:
+        try:
+            if key is None:
                 return None
-        
-        # 作为后备，返回按键的字符串表示
-        return str(key)
+            # 处理特殊键 (Ctrl, Alt, Shift, F1, 等)
+            if isinstance(key, keyboard.Key):
+                # 返回按键名称，例如 'ctrl_l', 'esc'
+                return key.name
+            # 处理普通字符键
+            if isinstance(key, keyboard.KeyCode):
+                # key.char 可能是 None，或者是一个控制字符
+                if key.char is None:
+                    return None
+                if ord(key.char) < 128:
+                    char_ord = ord(key.char)
+                    # 检查是否为 Ctrl+[a-z] 生成的控制字符 (ASCII 1-26)
+                    if 1 <= char_ord <= 26:
+                        # 将其转换回对应的字母 'a'-'z'
+                        return chr(char_ord + 96) 
+                    
+                    # 如果是其他可打印字符，直接返回
+                    return key.char
+                else:
+                    return None
+            
+            # 作为后备，返回按键的字符串表示
+            return str(key)
+        except Exception as e:
+            error(f"Error in _get_key_identifier: {e}")
+            return None
 
     def run(self):
         # --- Pygame 初始化 (Joystick Only) ---

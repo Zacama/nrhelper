@@ -209,6 +209,8 @@ class Updater(QObject):
         if image is None:
             self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
                 clear_image=True,
+                map_pattern_match_time=0,
+                map_pattern_matching=False,
             ))
             info("Clear map overlay image.")
         else:
@@ -218,6 +220,8 @@ class Updater(QObject):
                 y=self.map_region[1],
                 w=self.map_region[2],
                 h=self.map_region[3],
+                map_pattern_match_time=self.get_time(),
+                map_pattern_matching=False,
             ))
             info("Update map overlay image.")
 
@@ -319,7 +323,11 @@ class Updater(QObject):
                 if earth_shifting is not None:
                     # 进行匹配
                     self.do_match_map_pattern_flag = DoMatchMapPatternFlag.FALSE
-                    self.update_map_overlay_image(MapDetector.get_loading_image(self.map_region[2:4]))
+                    self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+                        clear_image=True,
+                        map_pattern_matching=True,
+                        opacity=1.0,
+                    ))
                     self.update_overlay_ui_state_signal.emit(OverlayUIState(
                         map_pattern_match_text="",
                     ))

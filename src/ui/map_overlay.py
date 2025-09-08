@@ -1,14 +1,17 @@
 from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QProgressBar, QLabel, QHBoxLayout, QSizePolicy
+    QApplication, QWidget, QVBoxLayout, QProgressBar, 
+    QLabel, QHBoxLayout, QSizePolicy, QStackedLayout,
 )
 from PyQt6.QtGui import QMouseEvent, QKeySequence, QKeyEvent
 from dataclasses import dataclass, field
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor, QPixmap, QImage
 from PIL import Image
+from datetime import datetime, timedelta
+import time
 
-from src.common import APP_FULLNAME, APP_AUTHER, GAME_WINDOW_TITLE
+from src.common import get_readable_timedelta
 from src.config import Config
 from src.logger import info, warning, error
 from src.ui.utils import set_widget_always_on_top, is_window_in_foreground
@@ -24,6 +27,8 @@ class MapOverlayUIState:
     visible: bool | None = None
     overlay_image: Image.Image | None = None
     clear_image: bool = False
+    map_pattern_matching: bool | None = None
+    map_pattern_match_time: float | None = None
 
     only_show_when_game_foreground: bool | None = None
     is_game_foreground: bool | None = None
@@ -45,15 +50,21 @@ class MapOverlayWidget(QWidget):
         set_widget_always_on_top(self)
         self.startTimer(50)
 
-        self.layout: QVBoxLayout = QVBoxLayout(self)
-        self.label = QLabel()
+        self.label = QLabel(self)
         self.label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.addWidget(self.label)
+
+        self.map_pattern_match_time: float = 0.0
+        self.map_pattern_matching: bool = False
+        self.match_time_label = QLabel(self)
+        self.match_time_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+        shadow_effect = QGraphicsDropShadowEffect(self.match_time_label)
+        shadow_effect.setBlurRadius(5)
+        shadow_effect.setOffset(2, 2)
+        shadow_effect.setColor(QColor(0, 0, 0, 160))
+        self.match_time_label.setGraphicsEffect(shadow_effect)
 
         self.target_opacity = 1.0
-        self.real_opacity = 1.0
 
         self.visible = True
         self.only_show_when_game_foreground = False
@@ -105,21 +116,40 @@ class MapOverlayWidget(QWidget):
             self.is_menu_opened = state.is_menu_opened
         if state.is_setting_opened is not None:
             self.is_setting_opened = state.is_setting_opened
+        if state.map_pattern_matching is not None:
+            self.map_pattern_matching = state.map_pattern_matching
+        if state.map_pattern_match_time is not None:
+            self.map_pattern_match_time = state.map_pattern_match_time
         self.update()
 
 
     def timerEvent(self, event):
+        self.label.setGeometry(0, 0, self.width(), self.height())
+        self.match_time_label.setGeometry(0, 0, int(self.width() * 0.97), int(self.height() * 0.99))
+
+        if self.map_pattern_matching:
+            spin_line = ['|', '/', '-', '\\'][int(time.time() * 4) % 4]
+            self.match_time_label.setText(f"正在识别中... {spin_line}")
+        elif self.map_pattern_match_time > 0:
+            elapsed = time.time() - self.map_pattern_match_time
+            self.match_time_label.setText(f"识别时间：{get_readable_timedelta(timedelta(seconds=elapsed))}前")
+        else:
+            self.match_time_label.setText("")
+        font_size = max(8, 24 * self.height() // 750)
+        self.match_time_label.setStyleSheet(f"color: white; font-size: {font_size}px;")
+
         threshold = 0.01
         step = 0.6
-        dlt = self.target_opacity - self.real_opacity
+        real_opacity = self.windowOpacity()
+        dlt = self.target_opacity - real_opacity
         if abs(dlt) > threshold:
-            self.real_opacity += dlt * step
-            self.setWindowOpacity(self.real_opacity)
+            real_opacity += dlt * step
+            self.setWindowOpacity(real_opacity)
         elif 0 < abs(dlt) <= threshold:
-            self.real_opacity = self.target_opacity
-            self.setWindowOpacity(self.real_opacity)
+            real_opacity = self.target_opacity
+            self.setWindowOpacity(real_opacity)
 
-        visible = self.visible and self.real_opacity > 0.01
+        visible = self.visible and real_opacity > 0.01
         if self.only_show_when_game_foreground:
             visible = visible and (self.is_game_foreground or self.is_menu_opened or self.is_setting_opened)
         if visible and not self.isVisible():

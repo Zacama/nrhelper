@@ -90,7 +90,7 @@ class SettingsWindow(QWidget):
         self.appearance_layout.addLayout(set_position_center_layout)
 
         self.appearance_layout.addWidget(QLabel("提示：现在可以用鼠标左键拖动调整位置"))
-        self.appearance_layout.addWidget(QLabel("请使用无边框窗口模式启动游戏\n独占全屏模式下无法使用"))
+        self.appearance_layout.addWidget(QLabel("⚠️请使用无边框窗口模式启动游戏\n⚠️独占全屏模式下无法使用"))
 
         # 输入设置
         self.input_group = QGroupBox("计时快捷键")
@@ -149,6 +149,8 @@ class SettingsWindow(QWidget):
         self.only_show_when_game_foreground_checkbox.stateChanged.connect(self.update_only_show_when_game_foreground)
         only_show_when_game_foreground_layout.addWidget(self.only_show_when_game_foreground_checkbox)
         self.performance_layout.addLayout(only_show_when_game_foreground_layout)
+
+        self.performance_layout.addWidget(QLabel("⚠️目前所有功能仅支持在主屏幕检测"))
 
 
         # 自动计时设置
@@ -408,6 +410,7 @@ class SettingsWindow(QWidget):
         ))
         self.load_settings()
         super().showEvent(event)
+        info("Settings window opened")
 
     def closeEvent(self, event):
         self.update_overlay_ui_state_signal.emit(OverlayUIState(
@@ -419,6 +422,7 @@ class SettingsWindow(QWidget):
         ))
         self.save_settings()
         super().closeEvent(event)
+        info("Settings window closed")
 
     # =========================== Overlay Appearance =========================== #
 
@@ -743,7 +747,6 @@ class SettingsWindow(QWidget):
         detect_interval = config.detect_intervals.get(text, 0.2)
         self.updater.detect_interval = detect_interval
         info(f"Detect interval changed to {detect_interval} seconds ({text})")
-        self.save_settings()
 
     def update_only_show_when_game_foreground(self, state):
         enabled = self.only_show_when_game_foreground_checkbox.isChecked()

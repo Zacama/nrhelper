@@ -479,17 +479,6 @@ class MapDetector:
 
         return img
 
-    @staticmethod
-    def get_loading_image(draw_size: tuple[int, int]) -> Image.Image:
-        def scale_size(p: int | float | Position) -> int | Position:
-            if isinstance(p, (int, float)):
-                return int(p * draw_size[0] / 750)
-            return (int(p[0] * draw_size[0] / 750), int(p[1] * draw_size[1] / 750))
-        img = Image.new("RGBA", draw_size, (0, 0, 0, 0))
-        draw_text(img, scale_size((20, 10)), "正在识别地图...", scale_size(24), (255, 255, 255, 255), scale_size(3), (0, 0, 0, 255), 'lt')
-        return img
-
-
     def detect(self, sct: MSSBase, param: MapDetectParam | None) -> MapDetectResult:
         config = Config.get()
         ret = MapDetectResult()
