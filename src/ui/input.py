@@ -327,8 +327,9 @@ class InputSettingWidget(QWidget):
         self.layout: QVBoxLayout = QVBoxLayout(self)
         self.layout.setContentsMargins(0,0,0,0)
         self.setting_button = QPushButton()
-        self.setting_button.setMinimumHeight(30)
-        self.setMinimumHeight(30)
+        # self.setting_button.setMinimumHeight(30)
+        # self.setMinimumHeight(30)
+        self.setting_button.setStyleSheet("padding: 4px;")
         self.layout.addWidget(self.setting_button)
         
         # --- 初始化 ---

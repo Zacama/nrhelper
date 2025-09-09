@@ -31,6 +31,7 @@ class OverlayUIState:
     progress2_visible: bool | None = None
     set_x_to_center: bool = False
     map_pattern_match_text: str | None = None
+    hide_text: bool | None = None
 
     only_show_when_game_foreground: bool | None = None
     is_game_foreground: bool | None = None
@@ -110,6 +111,9 @@ class OverlayWidget(QWidget):
         self.is_game_foreground = False
         self.is_menu_opened = False
         self.is_setting_opened = False
+
+        self.progress2_visible = False
+        self.hide_text = False 
        
         self.update_ui_state(OverlayUIState(
             scale=1.0,
@@ -122,6 +126,7 @@ class OverlayWidget(QWidget):
             progress2=0,
             text2="",
             progress2_visible=False,
+            hide_text=False,
         ))
 
     def mousePressEvent(self, event: QMouseEvent):
@@ -203,12 +208,7 @@ class OverlayWidget(QWidget):
         if state.text2 is not None:
             self.label2.setText(state.text2)
         if state.progress2_visible is not None:
-            if state.progress2_visible:
-                self.progress_bar2.show()
-                self.label2.show()
-            else:
-                self.progress_bar2.hide()
-                self.label2.hide()
+            self.progress2_visible = state.progress2_visible
         if state.only_show_when_game_foreground is not None:
             self.only_show_when_game_foreground = state.only_show_when_game_foreground
         if state.is_game_foreground is not None:
@@ -217,6 +217,8 @@ class OverlayWidget(QWidget):
             self.is_menu_opened = state.is_menu_opened
         if state.is_setting_opened is not None:
             self.is_setting_opened = state.is_setting_opened
+        if state.hide_text is not None:
+            self.hide_text = state.hide_text
         self.update()
 
     def timerEvent(self, event):
@@ -227,5 +229,21 @@ class OverlayWidget(QWidget):
             self.show()
         elif not visible and self.isVisible():
             self.hide()
-            
+        
+        if self.hide_text:
+            self.label.hide()
+        else:
+            self.label.show()
+
+        if self.hide_text or not self.progress2_visible:
+            self.label2.hide()
+        else:
+            self.label2.show()
+
+        if self.progress2_visible:
+            self.progress_bar2.show()
+        else:
+            self.progress_bar2.hide()
+
+        
                   

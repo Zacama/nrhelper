@@ -226,22 +226,24 @@ class Updater(QObject):
             info("Update map overlay image.")
 
     def show_map_overlay(self):
-        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
-            opacity=1.0,
-            x=self.map_region[0],
-            y=self.map_region[1],
-            w=self.map_region[2],
-            h=self.map_region[3],
-        ))
-        self.map_overlay_visible = True
-        info("Show map overlay.")
+        if not self.map_overlay_visible:
+            self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+                opacity=1.0,
+                x=self.map_region[0],
+                y=self.map_region[1],
+                w=self.map_region[2],
+                h=self.map_region[3],
+            ))
+            self.map_overlay_visible = True
+            info("Show map overlay.")
 
     def hide_map_overlay(self):
-        self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
-            opacity=0.0,
-        ))
-        self.map_overlay_visible = False
-        info("Hide map overlay.")
+        if self.map_overlay_visible:
+            self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
+                opacity=0.0,
+            ))
+            self.map_overlay_visible = False
+            info("Hide map overlay.")
 
     def show_or_hide_map_overlay_by_shortcut(self):
         if self.map_overlay_visible:
@@ -285,25 +287,27 @@ class Updater(QObject):
             if not is_in_rain and self.in_rain_start_time is not None:
                 self.stop_in_rain()
 
-        is_full_map = result.map_detect_result.is_full_map
-        map_img = result.map_detect_result.img
-        if is_full_map is not None:
-            if is_full_map and not self.current_is_full_map:
-                info("Current map changed to full map.")
-                self.current_is_full_map = True
-                self.show_map_overlay()
-            if not is_full_map and self.current_is_full_map:
-                info("Current map changed to non-full map.")
-                self.current_is_full_map = False
-                self.hide_map_overlay()
+        if not self.map_detect_enabled:
+            self.hide_map_overlay()
+        else:
+            is_full_map = result.map_detect_result.is_full_map
+            map_img = result.map_detect_result.img
+            if is_full_map is not None:
+                if is_full_map and not self.current_is_full_map:
+                    info("Current map changed to full map.")
+                    self.current_is_full_map = True
+                    self.show_map_overlay()
+                if not is_full_map and self.current_is_full_map:
+                    info("Current map changed to non-full map.")
+                    self.current_is_full_map = False
+                    self.hide_map_overlay()
 
-        self.update_overlay_match_map_pattern_text()
-        if self.get_time() - self.last_map_pattern_match_time > Config.get().map_pattern_match_interval:
-            self.set_to_detect_map_pattern_once()
-            self.last_map_pattern_match_time = self.get_time()
-            info("Set to detect map pattern once by interval.")
+            self.update_overlay_match_map_pattern_text()
+            if self.get_time() - self.last_map_pattern_match_time > Config.get().map_pattern_match_interval:
+                self.set_to_detect_map_pattern_once()
+                self.last_map_pattern_match_time = self.get_time()
+                info("Set to detect map pattern once by interval.")
 
-        if self.map_detect_enabled:
             if self.do_match_map_pattern_flag == DoMatchMapPatternFlag.PREPARE:
                 # 隐藏信息显示，等待下一次更新进行识别
                 self.do_match_map_pattern_flag = DoMatchMapPatternFlag.TRUE

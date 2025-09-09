@@ -4,7 +4,7 @@ from datetime import timedelta
 
 APP_NAME = "nightreign-overlay-helper"
 APP_NAME_CHS = "黑夜君临悬浮助手"
-APP_VERSION = "0.6.2"
+APP_VERSION = "0.6.3"
 APP_FULLNAME = f"{APP_NAME_CHS}v{APP_VERSION}"
 APP_AUTHER = "NeuraXmy"
 

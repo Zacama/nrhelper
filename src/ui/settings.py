@@ -27,10 +27,13 @@ from src.detector.utils import hls_to_rgb
 from src.ui.bug_report import BugReportWindow
 
 
+BUTTON_STYLE = "padding: 4px;"
+
 SETTINGS_SAVE_PATH = get_appdata_path("settings.yaml")
 DETECT_REGION_TUTORIAL_IMG_PATH = get_asset_path("detect_region_tutorial/{i}.jpg")
 COLOR_ALIGN_TUTORIAL_IMG_PATH = get_asset_path("color_align_tutorial/{i}.jpg")
 MAP_DETECT_TUTORIAL_IMG_PATH = get_asset_path("map_detect_tutorial/{i}.jpg")
+
 
 class SettingsWindow(QWidget):
     update_overlay_ui_state_signal = pyqtSignal(OverlayUIState)
@@ -54,15 +57,10 @@ class SettingsWindow(QWidget):
         self.setWindowTitle(f"{APP_FULLNAME} - 设置")
         self.setMinimumSize(350, 200)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-        
-        self.layout: QHBoxLayout = QHBoxLayout(self)
-        self.left_layout = QVBoxLayout()
-        self.layout.addLayout(self.left_layout)
 
         # 外观设置
-        self.appearance_group = QGroupBox("外观")
+        self.appearance_group = QGroupBox("计时器外观")
         self.appearance_layout = QVBoxLayout(self.appearance_group)
-        self.left_layout.addWidget(self.appearance_group)
 
         size_layout = QHBoxLayout()
         size_layout.addWidget(QLabel("大小"))
@@ -84,10 +82,16 @@ class SettingsWindow(QWidget):
 
         set_position_center_layout = QHBoxLayout()
         set_position_center_button = QPushButton("设置水平居中")
-        set_position_center_button.setStyleSheet("padding: 6px;")
+        set_position_center_button.setStyleSheet(BUTTON_STYLE)
         set_position_center_button.clicked.connect(self.set_overlay_position_center)
         set_position_center_layout.addWidget(set_position_center_button)
         self.appearance_layout.addLayout(set_position_center_layout)
+
+        hide_text_layout = QHBoxLayout()
+        self.hide_text_checkbox = QCheckBox("隐藏文字")
+        self.hide_text_checkbox.stateChanged.connect(self.set_hide_text)
+        hide_text_layout.addWidget(self.hide_text_checkbox)
+        self.appearance_layout.addLayout(hide_text_layout)
 
         self.appearance_layout.addWidget(QLabel("提示：现在可以用鼠标左键拖动调整位置"))
         self.appearance_layout.addWidget(QLabel("⚠️请使用无边框窗口模式启动游戏\n⚠️独占全屏模式下无法使用"))
@@ -95,7 +99,6 @@ class SettingsWindow(QWidget):
         # 输入设置
         self.input_group = QGroupBox("计时快捷键")
         self.input_layout = QVBoxLayout(self.input_group)
-        self.left_layout.addWidget(self.input_group)
 
         day_input_layout = QHBoxLayout()
         day_input_layout.addWidget(QLabel("重置缩圈"))
@@ -131,7 +134,6 @@ class SettingsWindow(QWidget):
         # 性能设置
         self.performance_group = QGroupBox("性能")
         self.performance_layout = QVBoxLayout(self.performance_group)
-        self.left_layout.addWidget(self.performance_group)
 
         detect_interval_layout = QHBoxLayout()
         detect_interval_layout.addWidget(QLabel("自动检测频率"))
@@ -156,7 +158,6 @@ class SettingsWindow(QWidget):
         # 自动计时设置
         self.auto_timer_group = QGroupBox("自动计时")
         self.auto_timer_layout = QVBoxLayout(self.auto_timer_group)
-        self.layout.addWidget(self.auto_timer_group)
 
         screenshot_region_help_layout = QHBoxLayout()
         help_button = QPushButton("查看自动计时帮助")
@@ -165,19 +166,20 @@ class SettingsWindow(QWidget):
         screenshot_region_help_layout.addWidget(help_button)
         self.auto_timer_layout.addLayout(screenshot_region_help_layout)
 
+        auto_timer_enable_layout = QHBoxLayout()
         dayx_detect_enable_layout = QHBoxLayout()
-        self.dayx_detect_enable_checkbox = QCheckBox("启用缩圈自动计时")
+        self.dayx_detect_enable_checkbox = QCheckBox("缩圈自动计时")
         self.dayx_detect_enable_checkbox.stateChanged.connect(self.update_dayx_detect_enable)
         dayx_detect_enable_layout.addWidget(self.dayx_detect_enable_checkbox)
         dayx_detect_enable_layout.addStretch()
-        self.auto_timer_layout.addLayout(dayx_detect_enable_layout)
-
+        auto_timer_enable_layout.addLayout(dayx_detect_enable_layout)
         in_rain_detect_enable_layout = QHBoxLayout()
-        self.in_rain_detect_enable_checkbox = QCheckBox("启用雨中冒险自动计时")
+        self.in_rain_detect_enable_checkbox = QCheckBox("雨中冒险自动计时")
         self.in_rain_detect_enable_checkbox.stateChanged.connect(self.update_in_rain_detect_enable)
         in_rain_detect_enable_layout.addWidget(self.in_rain_detect_enable_checkbox)
         in_rain_detect_enable_layout.addStretch()
-        self.auto_timer_layout.addLayout(in_rain_detect_enable_layout)
+        auto_timer_enable_layout.addLayout(in_rain_detect_enable_layout)
+        self.auto_timer_layout.addLayout(auto_timer_enable_layout)
 
         screenshot_region_layout = QHBoxLayout()
         screenshot_region_layout.addWidget(QLabel("截取检测区域快捷键"))
@@ -206,7 +208,7 @@ class SettingsWindow(QWidget):
 
         hp_color_help_layout = QHBoxLayout()
         hp_color_help_button = QPushButton("查看校准血条颜色帮助")
-        hp_color_help_button.setStyleSheet("padding: 6px;")
+        hp_color_help_button.setStyleSheet(BUTTON_STYLE)
         hp_color_help_button.clicked.connect(self.show_capture_hp_color_help)
         hp_color_help_layout.addWidget(hp_color_help_button)
         self.auto_timer_layout.addLayout(hp_color_help_layout)
@@ -238,18 +240,13 @@ class SettingsWindow(QWidget):
         clear_to_detect_hp_layout.addStretch()
         self.auto_timer_layout.addLayout(clear_to_detect_hp_layout)
 
-
-        self.right_layout = QVBoxLayout()
-        self.layout.addLayout(self.right_layout)
-
         # 地图识别设置
         self.map_detect_group = QGroupBox("地图识别")
         self.map_detect_layout = QVBoxLayout(self.map_detect_group)
-        self.right_layout.addWidget(self.map_detect_group)
 
         map_detect_help_layout = QHBoxLayout()
         map_help_button = QPushButton("查看地图识别帮助")
-        map_help_button.setStyleSheet("padding: 6px;")
+        map_help_button.setStyleSheet(BUTTON_STYLE)
         map_help_button.clicked.connect(self.show_capture_map_region_tutorial)
         map_detect_help_layout.addWidget(map_help_button)
         self.map_detect_layout.addLayout(map_detect_help_layout)
@@ -289,25 +286,43 @@ class SettingsWindow(QWidget):
         # 其他设置
         self.other_group = QGroupBox("其他")
         self.other_layout = QVBoxLayout(self.other_group)
-        self.right_layout.addWidget(self.other_group)
 
         bug_report_button = QPushButton("BUG反馈")
-        bug_report_button.setStyleSheet("padding: 6px;")
+        bug_report_button.setStyleSheet(BUTTON_STYLE)
         bug_report_button.clicked.connect(self.open_bug_report_window)
         self.other_layout.addWidget(bug_report_button)
 
         open_log_button = QPushButton("打开日志位置")
-        open_log_button.setStyleSheet("padding: 6px;")
+        open_log_button.setStyleSheet(BUTTON_STYLE)
         open_log_button.clicked.connect(self.open_log_directory)
         self.other_layout.addWidget(open_log_button)
 
         abouts_button = QPushButton("关于")
-        abouts_button.setStyleSheet("padding: 6px;")
+        abouts_button.setStyleSheet(BUTTON_STYLE)
         abouts_button.clicked.connect(self.open_about_dialog)
         self.other_layout.addWidget(abouts_button)
 
+        # Layouts   
+        self.left_layout = QVBoxLayout()
+        self.left_layout.addWidget(self.appearance_group)
+        self.left_layout.addWidget(self.input_group)
+
+        self.mid_layout = QVBoxLayout()
+        self.mid_layout.addWidget(self.performance_group)
+        self.mid_layout.addWidget(self.auto_timer_group)
+
+        self.right_layout = QVBoxLayout()
+        self.right_layout.addWidget(self.map_detect_group)
+        self.right_layout.addWidget(self.other_group)
+
         self.left_layout.addStretch()
+        self.mid_layout.addStretch()
         self.right_layout.addStretch()
+
+        self.layout: QHBoxLayout = QHBoxLayout(self)
+        self.layout.addLayout(self.left_layout)
+        self.layout.addLayout(self.mid_layout)
+        self.layout.addLayout(self.right_layout)
 
         # 加载设置
         self.load_settings()
@@ -315,6 +330,18 @@ class SettingsWindow(QWidget):
 
     def load_settings(self):
         try:
+            def load_checkbox_state(checkbox: QCheckBox, state: bool):
+                checkbox.setChecked(not state)
+                checkbox.setChecked(state)
+            def load_slider_value(slider: QSlider, value: int):
+                slider.setValue(value - 1)
+                slider.setValue(value)
+            def load_combobox_value(combobox: QComboBox, value: str):
+                combobox.setCurrentText(None)
+                combobox.setCurrentText(value)
+
+            info("------------------------")
+            info("Start to load settings")
             config = Config.get()
             if os.path.exists(SETTINGS_SAVE_PATH):
                 with open(SETTINGS_SAVE_PATH, "r") as f:
@@ -324,26 +351,27 @@ class SettingsWindow(QWidget):
                 data = {}
                 warning(f"Settings file not found: {SETTINGS_SAVE_PATH}, using defaults")
             # 外观
-            self.size_slider.setValue(data.get("size", 200))
-            self.opacity_slider.setValue(data.get("opacity", 60))
+            load_slider_value(self.size_slider, data.get("size", 200))
+            load_slider_value(self.opacity_slider, data.get("opacity", 60))
             self.update_overlay_ui_state_signal.emit(OverlayUIState(
                 x=data.get("x"),
                 y=data.get("y"),
             ))
+            load_checkbox_state(self.hide_text_checkbox, data.get("hide_text", False))
             # 快捷键
             self.day_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("day_input_setting")))
             self.forward_day_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("forward_day_input_setting")))
             self.back_day_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("back_day_input_setting")))
             self.in_rain_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("in_rain_input_setting")))
             # 性能
-            self.only_show_when_game_foreground_checkbox.setChecked(data.get("only_show_when_game_foreground", False))
-            self.detect_interval_combobox.setCurrentText(data.get("detect_interval", "高"))
+            load_checkbox_state(self.only_show_when_game_foreground_checkbox, data.get("only_show_when_game_foreground", False))
+            load_combobox_value(self.detect_interval_combobox, data.get("detect_interval", "高"))
             # 自动计时
-            self.dayx_detect_enable_checkbox.setChecked(data.get("dayx_detect_enabled", True))
-            self.in_rain_detect_enable_checkbox.setChecked(data.get("in_rain_detect_enabled", True))
+            load_checkbox_state(self.dayx_detect_enable_checkbox, data.get("dayx_detect_enabled", True))
+            load_checkbox_state(self.in_rain_detect_enable_checkbox, data.get("in_rain_detect_enabled", True))
             self.capture_dayx_hpbar_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_dayx_hpbar_region_input_setting")))
             self.dayx_detect_lang = data.get("dayx_detect_lang", "chs")
-            self.lang_combobox.setCurrentText(config.dayx_detect_langs[self.dayx_detect_lang])
+            load_combobox_value(self.lang_combobox, config.dayx_detect_langs[self.dayx_detect_lang])
             self.day1_detect_region = data.get("day1_detect_region", None)
             self.hp_bar_detect_region = data.get("hp_bar_detect_region", None)
             self.update_day1_hpbar_regions()
@@ -352,14 +380,16 @@ class SettingsWindow(QWidget):
             self.in_rain_hls = data.get("in_rain_hls", None)
             self.update_hp_color()
             # 地图识别
-            self.map_detect_enable_checkbox.setChecked(data.get("map_detect_enabled", True))
+            load_checkbox_state(self.map_detect_enable_checkbox, data.get("map_detect_enabled", True))
             self.capture_map_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_map_region_input_setting")))
             self.map_region = data.get("map_region", None)
             self.update_map_region()
             self.set_to_detect_map_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("set_to_detect_map_input_setting")))
             self.show_map_overlay_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("show_map_overlay_input_setting")))
+            info("Settings loaded successfully")
         except Exception as e:
             error(f"Failed to load settings: {e}")
+        info("------------------------")
 
     def save_settings(self):
         try:
@@ -370,6 +400,7 @@ class SettingsWindow(QWidget):
                     "opacity": self.opacity_slider.value(),
                     "x": self.overlay.x(),
                     "y": self.overlay.y(),
+                    "hide_text": self.hide_text_checkbox.isChecked(),
                     # 快捷键
                     "day_input_setting": asdict(self.day_input_setting_widget.get_setting()),
                     "forward_day_input_setting": asdict(self.forward_day_input_setting_widget.get_setting()),
@@ -408,7 +439,7 @@ class SettingsWindow(QWidget):
         self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
             is_setting_opened=True,
         ))
-        self.load_settings()
+        # self.load_settings()
         super().showEvent(event)
         info("Settings window opened")
 
@@ -437,6 +468,10 @@ class SettingsWindow(QWidget):
     def set_overlay_position_center(self):
         self.update_overlay_ui_state_signal.emit(OverlayUIState(set_x_to_center=True))
         info("Overlay position set to center")
+
+    def set_hide_text(self, state):
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(hide_text=state))
+        info(f"Overlay hide text set to {state}")
 
     # =========================== DayX Detect =========================== #
 
@@ -604,13 +639,13 @@ class SettingsWindow(QWidget):
         info(f"Updated hp color: not_in_rain_hls={self.not_in_rain_hls}, in_rain_hls={self.in_rain_hls}")
         if self.not_in_rain_hls is None:
             self.not_in_rain_label.setText(f"默认")
-            self.not_in_rain_label.setStyleSheet(f"background-color: #fff")
+            self.not_in_rain_label.setStyleSheet(f"background-color: #fff; color: black")
         else:
             self.not_in_rain_label.setText(f"已设置")
             self.not_in_rain_label.setStyleSheet(f"background-color: rgb{hls_to_rgb(self.not_in_rain_hls)}; color: white")
         if self.in_rain_hls is None:
             self.in_rain_label.setText(f"默认")
-            self.in_rain_label.setStyleSheet(f"background-color: #fff")
+            self.in_rain_label.setStyleSheet(f"background-color: #fff; color: black")
         else:
             self.in_rain_label.setText(f"已设置")
             self.in_rain_label.setStyleSheet(f"background-color: rgb{hls_to_rgb(self.in_rain_hls)}; color: white")
