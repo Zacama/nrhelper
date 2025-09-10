@@ -15,7 +15,7 @@ from src.common import APP_FULLNAME, APP_VERSION, ICON_PATH
 from src.logger import info, warning, error
 
 
-def log_system_and_screen_info():
+def log_system_and_screen_info(app: QApplication):
     try:
         import platform
         system = platform.system()
@@ -36,16 +36,16 @@ def log_system_and_screen_info():
         warning(f"Error getting monitor info: {e}")
 
     try:
-        from PyQt6.QtWidgets import QApplication
-        app: QApplication = QApplication.instance()
-        if app:
-            screen = app.primaryScreen()
+        screens = app.screens()
+        info(f"QApplication detected {len(screens)} screen(s):")
+        for i, screen in enumerate(screens, start=1):
             size = screen.size()
+            pos = screen.geometry().topLeft()
             dpi = screen.logicalDotsPerInch()
             device_pixel_ratio = screen.devicePixelRatio()
-            info(f"Primary Screen: {size.width()}x{size.height()}, DPI: {dpi}, Device Pixel Ratio: {device_pixel_ratio}")
+            info(f"    Screen {i}: {size.width()}x{size.height()} at ({pos.x()},{pos.y()}), DPI: {dpi}, Device Pixel Ratio: {device_pixel_ratio}")
     except Exception as e:
-        warning(f"Error getting primary screen info: {e}")
+        warning(f"Error getting screens from QApplication: {e}")
 
 
 if __name__ == "__main__":
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_Use96Dpi)
     app = QApplication(sys.argv)
 
-    log_system_and_screen_info()
+    log_system_and_screen_info(app)
     
     # 防止因没有窗口而导致程序退出
     app.setQuitOnLastWindowClosed(False)

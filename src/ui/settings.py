@@ -88,6 +88,13 @@ class SettingsWindow(QWidget):
         set_position_center_layout.addWidget(set_position_center_button)
         self.appearance_layout.addLayout(set_position_center_layout)
 
+        reset_position_layout = QHBoxLayout()
+        reset_position_button = QPushButton("重置位置到主屏幕中心")
+        reset_position_button.setStyleSheet(BUTTON_STYLE)
+        reset_position_button.clicked.connect(self.reset_overlay_position)
+        reset_position_layout.addWidget(reset_position_button)
+        self.appearance_layout.addLayout(reset_position_layout)
+
         hide_text_layout = QHBoxLayout()
         self.hide_text_checkbox = QCheckBox("隐藏文字")
         self.hide_text_checkbox.stateChanged.connect(self.update_hide_text)
@@ -152,8 +159,6 @@ class SettingsWindow(QWidget):
         self.only_show_when_game_foreground_checkbox.stateChanged.connect(self.update_only_show_when_game_foreground)
         only_show_when_game_foreground_layout.addWidget(self.only_show_when_game_foreground_checkbox)
         self.performance_layout.addLayout(only_show_when_game_foreground_layout)
-
-        self.performance_layout.addWidget(QLabel("⚠️目前所有功能仅支持在主屏幕检测"))
 
 
         # 自动计时设置
@@ -304,7 +309,7 @@ class SettingsWindow(QWidget):
         self.other_layout.addWidget(abouts_button)
 
         # HP检测设置
-        self.hp_detect_group = QGroupBox("血条比例标记")
+        self.hp_detect_group = QGroupBox("血条比例标记(beta)")
         self.hp_detect_layout = QVBoxLayout(self.hp_detect_group)
         
         hp_detect_help_layout = QHBoxLayout()
@@ -513,6 +518,13 @@ class SettingsWindow(QWidget):
         self.update_overlay_ui_state_signal.emit(OverlayUIState(hide_text=state))
         info(f"Overlay hide text set to {state}")
 
+    def reset_overlay_position(self):
+        screen_size = QApplication.primaryScreen().geometry().size()
+        sw, sh = screen_size.width(), screen_size.height()
+        ow, oh = self.overlay.width(), self.overlay.height()
+        self.overlay.move(int((sw - ow) / 2), int((sh - oh) / 2))
+        info("Overlay position reset to main screen center")
+
     # =========================== DayX In Rain Detect =========================== #
 
     def update_dayx_detect_enable(self, state):
@@ -531,18 +543,16 @@ class SettingsWindow(QWidget):
         info(f"DayX detect lang changed to {self.dayx_detect_lang}")
 
     def capture_day1_hpcolor_region(self):
-        screen_size = QApplication.primaryScreen().geometry().size()
-        sw, sh = screen_size.width(), screen_size.height()
         COLOR_HPCOLOR = "#a84747"
         COLOR_DAY_I = "#686435"
         SCREENSHOT_WINDOW_CONFIG = {
             'annotation_buttons': [
-                {'pos': (int(sw * 0.8), int(sh * 0.1)), 'size': 32, 'color': COLOR_HPCOLOR, 'text': '点我并框出 血条 的区域'},
-                {'pos': (int(sw * 0.8), int(sh * 0.2)), 'size': 32, 'color': COLOR_DAY_I, 'text': '点我并框出 DAY I 图标 的区域'},
+                {'pos': (0.8, 0.1), 'size': 32, 'color': COLOR_HPCOLOR, 'text': '点我并框出 血条 的区域'},
+                {'pos': (0.8, 0.2), 'size': 32, 'color': COLOR_DAY_I, 'text': '点我并框出 DAY I 图标 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (int(sw * 0.8), int(sh * 0.5)), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (int(sw * 0.8), int(sh * 0.6)), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel':   {'pos': (0.8, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save':     {'pos': (0.8, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
@@ -627,18 +637,16 @@ class SettingsWindow(QWidget):
         info(f"In Rain detect enabled: {enabled}")
 
     def capture_hp_color(self):
-        screen_size = QApplication.primaryScreen().geometry().size()
-        sw, sh = screen_size.width(), screen_size.height()
         COLOR_NOT_IN_RAIN = "#b83232"
         COLOR_IN_RAIN = "#c03184"
         SCREENSHOT_WINDOW_CONFIG = {
             'annotation_buttons': [
-                {'pos': (int(sw * 0.8), int(sh * 0.1)), 'size': 32, 'color': COLOR_NOT_IN_RAIN, 'text': '点我并框出 正常颜色血条 的区域'},
-                {'pos': (int(sw * 0.8), int(sh * 0.2)), 'size': 32, 'color': COLOR_IN_RAIN,     'text': '点我并框出 雨中颜色血条 的区域'},
+                {'pos': (0.8, 0.1), 'size': 32, 'color': COLOR_NOT_IN_RAIN, 'text': '点我并框出 正常颜色血条 的区域'},
+                {'pos': (0.8, 0.2), 'size': 32, 'color': COLOR_IN_RAIN,     'text': '点我并框出 雨中颜色血条 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (int(sw * 0.8), int(sh * 0.5)), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (int(sw * 0.8), int(sh * 0.6)), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel':   {'pos': (0.8, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save':     {'pos': (0.8, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
@@ -767,16 +775,14 @@ class SettingsWindow(QWidget):
         msg.exec()
 
     def capture_map_region(self):
-        screen_size = QApplication.primaryScreen().geometry().size()
-        sw, sh = screen_size.width(), screen_size.height()
         COLOR_MAP_REGION = "#4384b9"
         SCREENSHOT_WINDOW_CONFIG = {
             'annotation_buttons': [
-                {'pos': (int(sw * 0.5), int(sh * 0.1)), 'size': 32, 'color': COLOR_MAP_REGION, 'text': '点我并框出 地图 的区域'},
+                {'pos': (0.5, 0.1), 'size': 32, 'color': COLOR_MAP_REGION, 'text': '点我并框出 地图 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (int(sw * 0.3), int(sh * 0.5)), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (int(sw * 0.3), int(sh * 0.6)), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel':   {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save':     {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
@@ -828,16 +834,14 @@ class SettingsWindow(QWidget):
         info(f"HP detect enabled: {self.updater.hp_detect_enabled}")
 
     def capture_hpbar_region(self):
-        screen_size = QApplication.primaryScreen().geometry().size()
-        sw, sh = screen_size.width(), screen_size.height()
         COLOR_HPBAR_REGION = "#eb3b3b"
         SCREENSHOT_WINDOW_CONFIG = {
             'annotation_buttons': [
-                {'pos': (int(sw * 0.5), int(sh * 0.1)), 'size': 32, 'color': COLOR_HPBAR_REGION, 'text': '点我并框出 血条 的区域'},
+                {'pos': (0.5, 0.1), 'size': 32, 'color': COLOR_HPBAR_REGION, 'text': '点我并框出 血条 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (int(sw * 0.3), int(sh * 0.5)), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (int(sw * 0.3), int(sh * 0.6)), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel':   {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save':     {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)

@@ -14,7 +14,7 @@ import time
 from src.common import get_readable_timedelta
 from src.config import Config
 from src.logger import info, warning, error
-from src.ui.utils import set_widget_always_on_top, is_window_in_foreground
+from src.ui.utils import set_widget_always_on_top, is_window_in_foreground, mss_region_to_qt_region
 
 
 @dataclass
@@ -90,16 +90,9 @@ class MapOverlayWidget(QWidget):
         self.label.setPixmap(pixmap)
         
     def update_ui_state(self, state: MapOverlayUIState):
-        if state.x is not None and state.y is not None:
-            self.move(
-                int(state.x / self.devicePixelRatio()),
-                int(state.y / self.devicePixelRatio())
-            )
-        if state.w is not None and state.h is not None:
-            self.resize(
-                int(state.w / self.devicePixelRatio()),
-                int(state.h / self.devicePixelRatio())
-            )
+        if state.x is not None:
+            region = mss_region_to_qt_region((state.x, state.y, state.w, state.h))
+            self.setGeometry(*region)
         if state.opacity is not None:
             self.target_opacity = state.opacity
         if state.visible is not None:

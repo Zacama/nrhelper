@@ -1,4 +1,5 @@
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QApplication
+from PyQt6.QtCore import Qt
 from src.logger import info, warning, error
 
 
@@ -29,3 +30,25 @@ def is_window_in_foreground(window_title: str) -> bool:
         return False
     except Exception as e:
         return False
+    
+
+def mss_region_to_qt_region(region: tuple[int]):
+    x, y, w, h = region
+    app: QApplication = QApplication.instance()
+    screens = app.screens()
+    for screen in screens:
+        sx = screen.geometry().x()
+        sy = screen.geometry().y()
+        sw = screen.geometry().width()
+        sh = screen.geometry().height()
+        ratio = screen.devicePixelRatio()
+        mss_sw = int(sw * ratio)
+        mss_sh = int(sh * ratio)
+        if sx <= x <= sx + mss_sw and sy <= y <= sy + mss_sh:
+            qx = sx + int((x - sx) / ratio)
+            qy = sy + int((y - sy) / ratio)
+            qw = int(w / ratio)
+            qh = int(h / ratio)
+            return (qx, qy, qw, qh)
+    raise ValueError(f"Region {region} is out of all screen bounds")
+    

@@ -49,7 +49,7 @@ PREDICT_EARTH_SHIFTING_SIZE_REGION = (
     int(PREDICT_EARTH_SHIFTING_SIZE[1] * 0.6),
 )
 PREDICT_EARTH_SHIFTING_OFFSET_AND_STRIDE = (5, 1)
-PREDICT_EARTH_SHIFTING_SCALES = (0.95, 1.05, 10)
+PREDICT_EARTH_SHIFTING_SCALES = (0.95, 1.05, 7)
 MAP_BGS = { i : open_cv2_image(f"maps/{i}.jpg") for i in range(6) if i != 4 }
 
 POI_ICON_SCALE = { 30: 0.35, 32: 0.5, 34: 0.4, 37: 0.4, 38: 0.3, 40: 0.4, 41: 0.38, }
@@ -160,23 +160,23 @@ class MapDetector:
         t = time.time()
         img = cv2.resize(img, PREDICT_EARTH_SHIFTING_SIZE, interpolation=CV2_RESIZE_METHOD)
         x, y, w, h = PREDICT_EARTH_SHIFTING_SIZE_REGION
-        img = img[y:y+h, x:x+w]
+        img = img[y:y+h, x:x+w].astype(int)
         best_map_id, best_score = None, float('inf')
         offset, stride = PREDICT_EARTH_SHIFTING_OFFSET_AND_STRIDE
         min_scale, max_scale, scale_num = PREDICT_EARTH_SHIFTING_SCALES
         for map_id, map_img in MAP_BGS.items():
             score = float('inf')
             for scale in np.linspace(min_scale, max_scale, scale_num):
-                    size = (int(PREDICT_EARTH_SHIFTING_SIZE[0] * scale), int(PREDICT_EARTH_SHIFTING_SIZE[1] * scale))
-                    map_resized = cv2.resize(map_img, size, interpolation=CV2_RESIZE_METHOD)
-                    for dx in range(-offset, offset+1, stride):
-                        for dy in range(-offset, offset+1, stride):
-                            map_shifted = map_resized[y+dy:y+h+dy, x+dx:x+w+dx]
-                            diff = np.abs((img.astype(np.float32) - map_shifted.astype(np.float32)))
-                            diff[diff > 100] = 0
-                            diff = np.linalg.norm(diff, axis=2)
-                            cur_score = np.median(diff)
-                            score = min(score, cur_score)
+                size = (int(PREDICT_EARTH_SHIFTING_SIZE[0] * scale), int(PREDICT_EARTH_SHIFTING_SIZE[1] * scale))
+                map_resized = cv2.resize(map_img, size, interpolation=CV2_RESIZE_METHOD).astype(int)
+                for dx in range(-offset, offset+1, stride):
+                    for dy in range(-offset, offset+1, stride):
+                        map_shifted = map_resized[y+dy:y+h+dy, x+dx:x+w+dx]
+                        diff = np.abs((img - map_shifted))
+                        diff[diff > 100] = 0
+                        diff = np.linalg.norm(diff, axis=2)
+                        cur_score = np.median(diff)
+                        score = min(score, cur_score)
             # print(f"map {map_id} score: {score:.4f}")
             if score < best_score:
                 best_score = score

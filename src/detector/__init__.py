@@ -23,17 +23,19 @@ class DetectResult:
 
 class DetectorManager:
     def __init__(self):
+        self.sct = None
         self.rain_detector = RainDetector()
         self.day_detector = DayDetector()
         self.map_detector = MapDetector()
         self.hp_detector = HpDetector()
 
     def detect(self, params: DetectParam) -> DetectResult:
+        if self.sct is None:
+            self.sct = mss()
         result = DetectResult()
-        with mss() as sct:
-            result.day_detect_result = self.day_detector.detect(sct, params.day_detect_param)
-            result.rain_detect_result = self.rain_detector.detect(sct, params.rain_detect_param)
-            result.map_detect_result = self.map_detector.detect(sct, params.map_detect_param)
-            result.hp_detect_result = self.hp_detector.detect(sct, params.hp_detect_param)
+        result.day_detect_result = self.day_detector.detect(self.sct, params.day_detect_param)
+        result.rain_detect_result = self.rain_detector.detect(self.sct, params.rain_detect_param)
+        result.map_detect_result = self.map_detector.detect(self.sct, params.map_detect_param)
+        result.hp_detect_result = self.hp_detector.detect(self.sct, params.hp_detect_param)
         return result
         

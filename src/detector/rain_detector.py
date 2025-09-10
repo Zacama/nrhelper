@@ -41,7 +41,6 @@ class RainDetector:
 
             img = grab_region(sct, hpcolor_region)
             hls = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2HLS)
-            # print(hls[hls.shape[0]//2, hls.shape[1]//2])
 
             def calc_pixel_num(hls: np.ndarray, c1: list[int], c2: list[int]) -> int:
                 lower = np.array([min(c1[i], c2[i]) for i in range(3)])

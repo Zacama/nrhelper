@@ -10,7 +10,7 @@ from PyQt6.QtGui import QColor
 from src.common import APP_FULLNAME, APP_AUTHER
 from src.config import Config
 from src.logger import info, warning, error
-from src.ui.utils import set_widget_always_on_top
+from src.ui.utils import set_widget_always_on_top, mss_region_to_qt_region
 
 
 @dataclass
@@ -68,7 +68,7 @@ class HpOverlayWidget(QWidget):
         
     def update_ui_state(self, state: HpOverlayUIState):
         if state.x is not None:
-            self.hpbar_region = (state.x, state.y, state.w, state.h)
+            self.hpbar_region = mss_region_to_qt_region((state.x, state.y, state.w, state.h))
         if state.visible is not None:
             self.visible = state.visible
         if state.only_show_when_game_foreground is not None:
@@ -82,24 +82,22 @@ class HpOverlayWidget(QWidget):
         self.update()
 
     def timerEvent(self, event):
+        line_height = int(self.LINE_HEIGHT / self.devicePixelRatio())
+        line_width = int(self.LINE_WIDTH / self.devicePixelRatio())
+
         x, y, w, h = self.hpbar_region
-        y -= self.LINE_HEIGHT  # 移动到血条上方
-        h = self.LINE_HEIGHT
-        self.setGeometry(
-            int(x / self.devicePixelRatio()),
-            int(y / self.devicePixelRatio()),
-            int(w / self.devicePixelRatio()),
-            int(h / self.devicePixelRatio())
-        )
+        y -= line_height  # 移动到血条上方
+        h = line_height
+        self.setGeometry(x, y, w, h)
 
-        self.percent20line.move(int(self.width() * 0.2) - self.LINE_WIDTH // 2, 0)
-        self.percent20line.resize(self.LINE_WIDTH, self.height())
+        self.percent20line.move(int(self.width() * 0.2) - line_width // 2, 0)
+        self.percent20line.resize(line_width, self.height())
 
-        self.percent85line.move(int(self.width() * 0.85) - self.LINE_WIDTH // 2, 0)
-        self.percent85line.resize(self.LINE_WIDTH, self.height())
+        self.percent85line.move(int(self.width() * 0.85) - line_width // 2, 0)
+        self.percent85line.resize(line_width, self.height())
         
-        self.percent100line.move(self.width() - self.LINE_WIDTH, 0)
-        self.percent100line.resize(self.LINE_WIDTH, self.height())
+        self.percent100line.move(self.width() - line_width, 0)
+        self.percent100line.resize(line_width, self.height())
 
         visible = self.visible and self.windowOpacity() > 0.01
         if self.only_show_when_game_foreground:

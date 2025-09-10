@@ -7,6 +7,7 @@ import mss
 from src.logger import info, warning, error
 from src.ui.input import InputWorker
 
+
 # 配置常量
 HANDLE_SIZE = 8  # 调整手柄的大小
 
@@ -116,53 +117,76 @@ class CaptureRegionWindow(QDialog):
         self.press_pos_for_drag = None
 
         self.screenshot_at_saving = None
-        
-        self._setup_ui()
+
+        self.btns: list[QPushButton] = []
+        self.cancel_btn: QPushButton = None
+        self.save_btn: QPushButton = None
 
     def _setup_ui(self):
         """根据配置创建UI元素"""
+        for btn in self.btns:
+            btn.setParent(None)
+            btn.deleteLater()
+        self.btns.clear()
+        if self.cancel_btn:
+            self.cancel_btn.setParent(None)
+            self.cancel_btn.deleteLater()
+            self.cancel_btn = None
+        if self.save_btn:
+            self.save_btn.setParent(None)
+            self.save_btn.deleteLater()
+            self.save_btn = None
+
+        screen_size = self.screen().size()
+        def get_abs_pos(rel_pos):
+            x, y = rel_pos
+            return int(screen_size.width() * x), int(screen_size.height() * y)
+
         for btn_config in self.config.get('annotation_buttons', []):
             btn = QPushButton(btn_config['text'], self)
-            btn.move(*btn_config['pos'])
+            btn.move(*get_abs_pos(btn_config['pos']))
             btn.setFixedHeight(btn_config['size'])
             btn.setStyleSheet(f"background-color: {btn_config['color']}; color: white; "
                               f"border-radius: 4px; padding: 8px; font-size: {btn_config['size'] - 16}px;")
             color = btn_config['color']
             btn.clicked.connect(lambda _, c=color: self._on_annotation_button_clicked(c))
+            self.btns.append(btn)
 
         cancel_cfg = self.config.get('control_buttons', {}).get('cancel')
         if cancel_cfg:
             cancel_btn = QPushButton(cancel_cfg['text'], self)
-            cancel_btn.move(*cancel_cfg['pos'])
+            cancel_btn.move(*get_abs_pos(cancel_cfg['pos']))
             cancel_btn.setFixedHeight(cancel_cfg['size'])
             cancel_btn.setStyleSheet(f"background-color: {cancel_cfg['color']}; color: black; "
                                      f"border-radius: 4px; padding: 8px; font-size: {cancel_cfg['size'] - 16}px;")
             cancel_btn.clicked.connect(self._cancel)
+            self.cancel_btn = cancel_btn
 
         save_cfg = self.config.get('control_buttons', {}).get('save')
         if save_cfg:
             save_btn = QPushButton(save_cfg['text'], self)
-            save_btn.move(*save_cfg['pos'])
+            save_btn.move(*get_abs_pos(save_cfg['pos']))
             save_btn.setFixedHeight(save_cfg['size'])
             save_btn.setStyleSheet(f"background-color: {save_cfg['color']}; color: black; "
                                    f"border-radius: 4px; padding: 8px; font-size: {save_cfg['size'] - 16}px;")
             save_btn.clicked.connect(self._save)
+            self.save_btn = save_btn
 
     def capture_and_show(self):
         """捕获全屏并显示窗口，以模态方式运行"""
-        screen = QApplication.primaryScreen()
+        # 修改为捕获鼠标所在屏幕
+        cursor_pos = QCursor.pos()
+        screen = QApplication.screenAt(cursor_pos)
         if not screen: return None
         self.screenshot_pixmap = screen.grabWindow(0)
-
+        info(f"Start to capture region at screen {tuple(screen.geometry().getRect())} with devicePixelRatio {screen.devicePixelRatio()}")
         ui_w, ui_h = screen.size().width(), screen.size().height()
-        screen_w, screen_h = self.screenshot_pixmap.width(), self.screenshot_pixmap.height()
-        if ui_w != screen_w or ui_h != screen_h:
-            warning(f"UI size and screenshot size do not match: ({ui_w}, {ui_h}) vs ({screen_w}, {screen_h})")
         self.screenshot_pixmap = self.screenshot_pixmap.scaled(
             ui_w, ui_h, 
             Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
         )
         self.setGeometry(screen.geometry())
+        self._setup_ui()
         self.exec()
         return self.result
 
@@ -257,6 +281,8 @@ class CaptureRegionWindow(QDialog):
                 self.update()
 
     def _process_key_combo(self, keys: tuple[int]):
+        if not self.isVisible():
+            return
         if 'enter' in keys:
             self._save()
         elif 'esc' in keys:
@@ -267,17 +293,8 @@ class CaptureRegionWindow(QDialog):
         self.setCursor(Qt.CursorShape.CrossCursor)
 
     def _save(self):
-        self.screenshot_at_saving = QApplication.primaryScreen().grabWindow(0)
-        with mss.mss() as sct:
-            mss_screen = sct.monitors[1]
-        mss_w, mss_h = mss_screen['width'], mss_screen['height']
-        qt_w, qt_h = self.screenshot_pixmap.width(), self.screenshot_pixmap.height()
-        scale_x, scale_y = None, None
-        print( f"mss screen size: ({mss_w}, {mss_h}), qt screen size: ({qt_w}, {qt_h})" )
-        if mss_w != self.screenshot_pixmap.width() or mss_h != self.screenshot_pixmap.height():
-            warning(f"MSS screen size and QT screen size do not match: ({mss_w}, {mss_h}) vs ({qt_w}, {qt_h})")
-            scale_x = mss_w / qt_w
-            scale_y = mss_h / qt_h
+        screen = self.screen()
+        self.screenshot_at_saving = screen.grabWindow(0)
         self.result = [
             {
                 'rect': item.rect.getRect(), # (x, y, width, height)
@@ -285,11 +302,19 @@ class CaptureRegionWindow(QDialog):
             }
             for item in self.rect_items
         ]
-        if scale_x and scale_y:
-            for r in self.result:
-                x, y, w, h = r['rect']
-                r['rect'] = (int(x * scale_x), int(y * scale_y), int(w * scale_x), int(h * scale_y))
-                info(f"resize rect ({(x, y, w, h)}) -> {r['rect']}")
+        # 计算缩放比例和偏移
+        offset_x = screen.geometry().x()
+        offset_y = screen.geometry().y()
+        scale = self.screen().devicePixelRatio()
+        for r in self.result:
+            x, y, w, h = r['rect']
+            r['rect'] = (
+                int(x * scale) + offset_x,
+                int(y * scale) + offset_y,
+                int(w * scale),
+                int(h * scale)
+            )
+            info(f"CaptureRegionWindow: Saved rect {(x, y, w, h)} -> {r['rect']} with color {r['color']}")
         self.close()
 
     def _cancel(self):
