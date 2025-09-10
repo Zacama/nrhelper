@@ -17,8 +17,22 @@ def get_size_by_height(size: tuple[int], target_height: int) -> tuple[int]:
     target_width = int(target_height * aspect_ratio)
     return (target_width, target_height)
 
+def get_size_by_width(size: tuple[int], target_width: int) -> tuple[int]:
+    width, height = size
+    aspect_ratio = width / height
+    target_height = int(target_width / aspect_ratio)
+    return (target_width, target_height)
+
 def resize_by_height_keep_aspect_ratio(image: Image.Image, target_height: int) -> Image.Image:
     target_size = get_size_by_height(image.size, target_height)
+    return image.resize(target_size, Image.Resampling.LANCZOS)
+
+def resize_by_width_keep_aspect_ratio(image: Image.Image, target_width: int) -> Image.Image:
+    target_size = get_size_by_width(image.size, target_width)
+    return image.resize(target_size, Image.Resampling.LANCZOS)
+
+def resize_by_scale(image: Image.Image, scale: float) -> Image.Image:
+    target_size = (int(image.size[0] * scale), int(image.size[1] * scale))
     return image.resize(target_size, Image.Resampling.LANCZOS)
 
 def paste_cv2(img1: np.ndarray, img2: np.ndarray, pos: tuple[int, int]):

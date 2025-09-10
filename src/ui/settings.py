@@ -302,21 +302,50 @@ class SettingsWindow(QWidget):
         abouts_button.clicked.connect(self.open_about_dialog)
         self.other_layout.addWidget(abouts_button)
 
+        # HP检测设置
+        self.hp_detect_group = QGroupBox("血条比例标记")
+        self.hp_detect_layout = QVBoxLayout(self.hp_detect_group)
+        
+        hp_detect_help_layout = QHBoxLayout()
+        hp_help_button = QPushButton("查看血条比例标记帮助")
+        hp_help_button.setStyleSheet(BUTTON_STYLE)
+        hp_help_button.clicked.connect(self.show_capture_hpbar_region_tutorial)
+        hp_detect_help_layout.addWidget(hp_help_button)
+        self.hp_detect_layout.addLayout(hp_detect_help_layout)
+
+        hp_detect_enable_layout = QHBoxLayout()
+        self.hp_detect_enable_checkbox = QCheckBox("启用血条比例标记")
+        self.hp_detect_enable_checkbox.stateChanged.connect(self.update_hp_detect_enable)
+        hp_detect_enable_layout.addWidget(self.hp_detect_enable_checkbox)
+        hp_detect_enable_layout.addStretch()
+        self.hp_detect_layout.addLayout(hp_detect_enable_layout)
+
+        self.hpbar_region = None
+        capture_hpbar_region_input_setting_layout = QHBoxLayout()
+        capture_hpbar_region_input_setting_layout.addWidget(QLabel("截取血条区域快捷键"))
+        self.capture_hpbar_region_input_widget = InputSettingWidget(self.input)
+        self.capture_hpbar_region_input_widget.input_triggered.connect(self.capture_hpbar_region)
+        capture_hpbar_region_input_setting_layout.addWidget(self.capture_hpbar_region_input_widget)
+        self.hp_detect_layout.addLayout(capture_hpbar_region_input_setting_layout)
+
+        self.hpbar_region_label = QLabel("当前血条区域: 未设置")
+        self.hp_detect_layout.addWidget(self.hpbar_region_label)
+
         # Layouts   
         self.left_layout = QVBoxLayout()
         self.left_layout.addWidget(self.appearance_group)
         self.left_layout.addWidget(self.input_group)
+        self.left_layout.addStretch()
 
         self.mid_layout = QVBoxLayout()
         self.mid_layout.addWidget(self.performance_group)
         self.mid_layout.addWidget(self.auto_timer_group)
+        self.mid_layout.addStretch()
 
         self.right_layout = QVBoxLayout()
         self.right_layout.addWidget(self.map_detect_group)
+        self.right_layout.addWidget(self.hp_detect_group)
         self.right_layout.addWidget(self.other_group)
-
-        self.left_layout.addStretch()
-        self.mid_layout.addStretch()
         self.right_layout.addStretch()
 
         self.layout: QHBoxLayout = QHBoxLayout(self)
@@ -473,7 +502,7 @@ class SettingsWindow(QWidget):
         self.update_overlay_ui_state_signal.emit(OverlayUIState(hide_text=state))
         info(f"Overlay hide text set to {state}")
 
-    # =========================== DayX Detect =========================== #
+    # =========================== DayX In Rain Detect =========================== #
 
     def update_dayx_detect_enable(self, state):
         enabled = self.dayx_detect_enable_checkbox.isChecked()
@@ -573,13 +602,13 @@ class SettingsWindow(QWidget):
         if self.day1_detect_region is None:
             self.day1_detect_region_label.setText("❌未设置缩圈检测区域")
         else:
-            self.day1_detect_region_label.setText(f"✔️已设置缩圈检测区域： {self.day1_detect_region}")
+            self.day1_detect_region_label.setText(f"✔️已设置缩圈检测区域: {self.day1_detect_region}")
         if self.hpcolor_detect_region is None:
             self.hpcolor_detect_region_label.setText("❌未设置雨中冒险检测区域")
         else:
-            self.hpcolor_detect_region_label.setText(f"✔️已设置雨中冒险检测区域： {self.hpcolor_detect_region}")
+            self.hpcolor_detect_region_label.setText(f"✔️已设置雨中冒险检测区域: {self.hpcolor_detect_region}")
  
-    # =========================== In Rain Detect =========================== #
+    # ===========================  Hp Color Align =========================== #
 
     def update_in_rain_detect_enable(self, state):
         enabled = self.in_rain_detect_enable_checkbox.isChecked()
@@ -764,7 +793,7 @@ class SettingsWindow(QWidget):
         if self.map_region is None:
             self.map_region_label.setText("❌未设置地图区域")
         else:
-            self.map_region_label.setText(f"✔️已设置地图区域：{self.map_region}")
+            self.map_region_label.setText(f"✔️已设置地图区域: {self.map_region}")
 
     # =========================== Performance =========================== #
 
@@ -784,7 +813,8 @@ class SettingsWindow(QWidget):
     # =========================== HP Detect =========================== #
         
     def update_hp_detect_enable(self, state):
-        pass
+        self.updater.hp_detect_enabled = self.hp_detect_enable_checkbox.isChecked()
+        info(f"HP detect enabled: {self.updater.hp_detect_enabled}")
 
     def capture_hpbar_region(self):
         pass
@@ -793,7 +823,12 @@ class SettingsWindow(QWidget):
         pass
 
     def update_hpbar_region(self):
-        pass
+        self.updater.hpbar_region = self.hpbar_region
+        info(f"Updated hpbar region: hpbar_region={self.hpbar_region}")
+        if self.hpbar_region is None:
+            self.hpbar_region_label.setText("❌未设置血条区域")
+        else:
+            self.hpbar_region_label.setText(f"✔️已设置血条区域: {self.hpbar_region}")
 
     # =========================== Other =========================== #
     

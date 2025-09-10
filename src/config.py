@@ -49,6 +49,12 @@ class Config:
     earth_shifting_error_threshold: float
     map_pattern_match_interval: float
 
+    hpbar_region_aspect_ratio: float
+    hpbar_detect_std_height: int
+    hpbar_border_v_peak_start: int
+    hpbar_border_v_peak_threshold: int
+    hpbar_border_v_peak_interval: int
+
     bug_report_email: str
 
     @staticmethod
