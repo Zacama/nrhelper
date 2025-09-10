@@ -2,7 +2,7 @@ import yaml
 import os
 from dataclasses import dataclass
 
-CONFIG_PATH = ".\\config.yaml"
+CONFIG_PATH = "config.yaml"
 
 _config: dict = {}
 _config_mtime = None

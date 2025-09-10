@@ -88,7 +88,7 @@ class ResizableRectItem:
         self.on_change_callback()
 
 
-class ScreenShotWindow(QDialog):
+class CaptureRegionWindow(QDialog):
     """一个支持区域选择的截屏窗口"""
 
     def __init__(self, config: dict, input: InputWorker, parent=None):
@@ -318,7 +318,7 @@ if __name__ == '__main__':
 
     # 注意：直接运行脚本会立即开始截屏
     # 1. 实例化窗口 (此时是隐藏的)
-    screenshot_tool = ScreenShotWindow(SCREENSHOT_WINDOW_CONFIG)
+    screenshot_tool = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG)
     
     # 2. 调用 capture_and_show() 来开始截屏流程
     #    该函数会阻塞，直到用户点击 "保存" 或 "取消"

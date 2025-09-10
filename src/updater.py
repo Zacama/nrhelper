@@ -65,7 +65,7 @@ class Updater(QObject):
         
         self.in_rain_start_time: float = None
         self.in_rain_detect_enabled: bool = True
-        self.hp_bar_detect_region: tuple[int] = None
+        self.hpcolor_detect_region: tuple[int] = None
         self.in_rain_hls: tuple[int] = None
         self.not_in_rain_hls: tuple[int] = None
 
@@ -263,7 +263,7 @@ class Updater(QObject):
             param.rain_detect_param = RainDetectParam(
                 in_rain_hls=self.in_rain_hls,
                 not_in_rain_hls=self.not_in_rain_hls,
-                hp_bar_region=self.hp_bar_detect_region,
+                hpcolor_region=self.hpcolor_detect_region,
             )
         if self.map_detect_enabled:
             param.map_detect_param = MapDetectParam(

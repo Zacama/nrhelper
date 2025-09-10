@@ -15,7 +15,7 @@ from src.detector.utils import grab_region
 class RainDetectParam:
     in_rain_hls: tuple[int, int, int] | None = None
     not_in_rain_hls: tuple[int, int, int] | None = None
-    hp_bar_region: tuple[int] | None = None
+    hpcolor_region: tuple[int] | None = None
 
 @dataclass
 class RainDetectResult:
@@ -31,7 +31,7 @@ class RainDetector:
         
     def match(
         self, sct, 
-        hp_bar_region: tuple[int],
+        hpcolor_region: tuple[int],
         in_rain_hls: tuple[int] | None,
         not_in_rain_hls: tuple[int] | None,
     ) -> tuple[float, float]:
@@ -39,7 +39,7 @@ class RainDetector:
             t = time.time()
             config = Config.get()
 
-            img = grab_region(sct, hp_bar_region)
+            img = grab_region(sct, hpcolor_region)
             hls = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2HLS)
             # print(hls[hls.shape[0]//2, hls.shape[1]//2])
 
@@ -72,11 +72,11 @@ class RainDetector:
     def detect(self, sct: MSSBase, params: RainDetectParam | None) -> RainDetectResult:
         config = Config.get()
         ret = RainDetectResult()
-        if params is None or params.hp_bar_region is None:
+        if params is None or params.hpcolor_region is None:
             return ret
         not_in_rain_ratio, in_rain_ratio = self.match(
             sct, 
-            params.hp_bar_region, 
+            params.hpcolor_region, 
             params.in_rain_hls, 
             params.not_in_rain_hls
         )
@@ -94,8 +94,8 @@ class RainDetector:
     def get_to_detect_hp_hls(screenshot: QPixmap, region: tuple[int]) -> tuple[int]:
         img = Image.fromqpixmap(screenshot)
         hls = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2HLS)
-        hp_bar_region = hls[region[1]:region[1]+region[3], region[0]:region[0]+region[2]]
-        hist = cv2.calcHist([hp_bar_region], [0, 1, 2], None, [180, 256, 256], [0, 180, 0, 256, 0, 256])
+        hpcolor_region = hls[region[1]:region[1]+region[3], region[0]:region[0]+region[2]]
+        hist = cv2.calcHist([hpcolor_region], [0, 1, 2], None, [180, 256, 256], [0, 180, 0, 256, 0, 256])
         max_val = np.unravel_index(np.argmax(hist), hist.shape)
         return [int(x) for x in max_val]
 
