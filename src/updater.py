@@ -306,7 +306,7 @@ class Updater(QObject):
             return
    
         param = DetectParam(
-            MapDetectParam(
+            map_detect_param=MapDetectParam(
                 map_region=self.map_region,
                 do_match_full_map=True,
             )
@@ -373,7 +373,7 @@ class Updater(QObject):
     # =============== HP Management =============== #
 
     def update_hp_length(self, length: int | None):
-        if length is None:
+        if length is None or length <= 0:
             self.hp_overlay_ui_state_signal.emit(HpOverlayUIState(
                 visible=False,
             ))

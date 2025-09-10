@@ -33,6 +33,7 @@ SETTINGS_SAVE_PATH = get_appdata_path("settings.yaml")
 DETECT_REGION_TUTORIAL_IMG_PATH = get_asset_path("detect_region_tutorial/{i}.jpg")
 COLOR_ALIGN_TUTORIAL_IMG_PATH = get_asset_path("color_align_tutorial/{i}.jpg")
 MAP_DETECT_TUTORIAL_IMG_PATH = get_asset_path("map_detect_tutorial/{i}.jpg")
+HP_DETECT_TUTORIAL_IMG_PATH = get_asset_path("hp_detect_tutorial/{i}.jpg")
 
 
 class SettingsWindow(QWidget):
@@ -335,16 +336,16 @@ class SettingsWindow(QWidget):
         self.left_layout = QVBoxLayout()
         self.left_layout.addWidget(self.appearance_group)
         self.left_layout.addWidget(self.input_group)
+        self.left_layout.addWidget(self.performance_group)
         self.left_layout.addStretch()
 
         self.mid_layout = QVBoxLayout()
-        self.mid_layout.addWidget(self.performance_group)
         self.mid_layout.addWidget(self.auto_timer_group)
+        self.mid_layout.addWidget(self.hp_detect_group)
         self.mid_layout.addStretch()
 
         self.right_layout = QVBoxLayout()
         self.right_layout.addWidget(self.map_detect_group)
-        self.right_layout.addWidget(self.hp_detect_group)
         self.right_layout.addWidget(self.other_group)
         self.right_layout.addStretch()
 
@@ -415,6 +416,12 @@ class SettingsWindow(QWidget):
             self.update_map_region()
             self.set_to_detect_map_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("set_to_detect_map_input_setting")))
             self.show_map_overlay_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("show_map_overlay_input_setting")))
+            # 血条比例标记
+            load_checkbox_state(self.hp_detect_enable_checkbox, data.get("hp_detect_enabled", True))
+            self.capture_hpbar_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_hpbar_region_input_setting")))
+            self.hpbar_region = data.get("hpbar_region", None)
+            self.update_hpbar_region()
+
             info("Settings loaded successfully")
         except Exception as e:
             error(f"Failed to load settings: {e}")
@@ -454,6 +461,10 @@ class SettingsWindow(QWidget):
                     "map_region": self.map_region,
                     "set_to_detect_map_input_setting": asdict(self.set_to_detect_map_input_setting_widget.get_setting()),
                     "show_map_overlay_input_setting": asdict(self.show_map_overlay_input_setting_widget.get_setting()),
+                    # 血条比例标记
+                    "hp_detect_enabled": self.hp_detect_enable_checkbox.isChecked(),
+                    "capture_hpbar_region_input_setting": asdict(self.capture_hpbar_region_input_widget.get_setting()),
+                    "hpbar_region": self.hpbar_region,
                 }, f)
             info(f"Saved settings to {SETTINGS_SAVE_PATH}")
         except Exception as e:
@@ -764,8 +775,8 @@ class SettingsWindow(QWidget):
                 {'pos': (int(sw * 0.5), int(sh * 0.1)), 'size': 32, 'color': COLOR_MAP_REGION, 'text': '点我并框出 地图 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (int(sw * 0.5), int(sh * 0.5)), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (int(sw * 0.5), int(sh * 0.6)), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel':   {'pos': (int(sw * 0.3), int(sh * 0.5)), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save':     {'pos': (int(sw * 0.3), int(sh * 0.6)), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
@@ -817,10 +828,63 @@ class SettingsWindow(QWidget):
         info(f"HP detect enabled: {self.updater.hp_detect_enabled}")
 
     def capture_hpbar_region(self):
-        pass
+        screen_size = QApplication.primaryScreen().geometry().size()
+        sw, sh = screen_size.width(), screen_size.height()
+        COLOR_HPBAR_REGION = "#eb3b3b"
+        SCREENSHOT_WINDOW_CONFIG = {
+            'annotation_buttons': [
+                {'pos': (int(sw * 0.5), int(sh * 0.1)), 'size': 32, 'color': COLOR_HPBAR_REGION, 'text': '点我并框出 血条 的区域'},
+            ],
+            'control_buttons': {
+                'cancel':   {'pos': (int(sw * 0.3), int(sh * 0.5)), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save':     {'pos': (int(sw * 0.3), int(sh * 0.6)), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+            }
+        }
+        window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
+        region_result = window.capture_and_show()
+        if region_result is None:
+            warning("Map region setting canceled")
+            return
+        else:
+            if screenshot := window.screenshot_at_saving:
+                save_path = get_appdata_path("hpbar_region_screenshot.jpg")
+                screenshot.save(save_path)
+            for item in region_result:
+                if item['color'] == COLOR_HPBAR_REGION:
+                    self.hpbar_region = list(item['rect'])
+                self.update_hpbar_region()
+            self.save_settings()
 
     def show_capture_hpbar_region_tutorial(self):
-        pass
+        tutorial_imgs = [QPixmap(str(HP_DETECT_TUTORIAL_IMG_PATH).format(i=i)) for i in range(1, 5)]
+        img_widgets: list[QLabel] = []
+        for img in tutorial_imgs:
+            img_widget = QLabel()
+            img = img.scaledToHeight(min(100, img.height()), Qt.TransformationMode.SmoothTransformation)
+            img_widget.setPixmap(img)
+            img_widget.setStyleSheet("border: 1px solid #ccc;")
+            img_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            img_widgets.append(img_widget)
+        msg = QMessageBox(self)
+        msg.setMaximumWidth(400)
+        msg.setWindowTitle("血条比例标记")
+        layout: QVBoxLayout = QVBoxLayout()
+        layout.addWidget(QLabel("1. 首先在设置界面调整\"截取血条区域快捷键\""))
+        layout.addWidget(img_widgets[0])
+        layout.addWidget(QLabel("2. 在任意有血条的游戏画面下按下设置的快捷键，并框选血条的区域"))
+        layout.addWidget(img_widgets[1])
+        layout.addWidget(QLabel("⚠️ 框选的要求：\n"
+                                "【高度】和血条完全相同\n"
+                                "【左侧边】和血条贴合\n"
+                                "【长度】无所谓"))
+        layout.addWidget(img_widgets[2])
+        layout.addWidget(QLabel("3. 回到设置界面看到\"已设置\"即可"))
+        layout.addWidget(img_widgets[3])
+        layout.addWidget(QLabel("4. 之后游玩时，在血条的上方会悬浮显示20%（血量偏低触发词条）\n"
+                                "85%（非满血时触发的负面词条）和100%（满血）三个标记\n"))
+        msg.layout().addLayout(layout, 0, 0)
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
 
     def update_hpbar_region(self):
         self.updater.hpbar_region = self.hpbar_region

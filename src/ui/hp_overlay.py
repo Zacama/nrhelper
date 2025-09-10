@@ -29,7 +29,7 @@ class HpOverlayUIState:
 
 class HpOverlayWidget(QWidget):
     LINE_WIDTH = 3
-    LINE_HEIGHT = 10
+    LINE_HEIGHT = 7
 
     def __init__(self):
         super().__init__()
@@ -51,6 +51,9 @@ class HpOverlayWidget(QWidget):
 
         self.percent20line = QLabel(self)
         self.percent20line.setStyleSheet("background-color: white;")
+
+        self.percent85line = QLabel(self)
+        self.percent85line.setStyleSheet("background-color: white;")
         
         self.percent100line = QLabel(self)
         self.percent100line.setStyleSheet("background-color: white;")
@@ -81,15 +84,19 @@ class HpOverlayWidget(QWidget):
     def timerEvent(self, event):
         x, y, w, h = self.hpbar_region
         y -= self.LINE_HEIGHT  # 移动到血条上方
+        h = self.LINE_HEIGHT
         self.setGeometry(
-            x / self.devicePixelRatio(),    
-            y / self.devicePixelRatio(),
-            w / self.devicePixelRatio(),
-            h / self.devicePixelRatio()
+            int(x / self.devicePixelRatio()),
+            int(y / self.devicePixelRatio()),
+            int(w / self.devicePixelRatio()),
+            int(h / self.devicePixelRatio())
         )
 
-        self.percent20line.move(int(self.width() * 0.2) - self.LINE_WIDTH / 2, 0)
+        self.percent20line.move(int(self.width() * 0.2) - self.LINE_WIDTH // 2, 0)
         self.percent20line.resize(self.LINE_WIDTH, self.height())
+
+        self.percent85line.move(int(self.width() * 0.85) - self.LINE_WIDTH // 2, 0)
+        self.percent85line.resize(self.LINE_WIDTH, self.height())
         
         self.percent100line.move(self.width() - self.LINE_WIDTH, 0)
         self.percent100line.resize(self.LINE_WIDTH, self.height())

@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 from src.ui.input import InputWorker
 from src.ui.overlay import OverlayWidget
 from src.ui.map_overlay import MapOverlayWidget
+from src.ui.hp_overlay import HpOverlayWidget
 from src.ui.settings import SettingsWindow
 from src.updater import Updater
 from src.common import APP_FULLNAME, APP_VERSION, ICON_PATH
@@ -63,7 +64,9 @@ if __name__ == "__main__":
     input = InputWorker()
     overlay = OverlayWidget()
     map_overlay = MapOverlayWidget()
-    updater = Updater(overlay, map_overlay)
+    hp_overlay = HpOverlayWidget()
+
+    updater = Updater(overlay, map_overlay, hp_overlay)
     settings_window = SettingsWindow(overlay, map_overlay, updater, input)
     
     # 创建系统托盘图标和菜单
@@ -130,6 +133,8 @@ if __name__ == "__main__":
     updater_thread.start()
     overlay.show()
     app.exec()
+
+    settings_window.save_settings()
 
     info("App exited.")
     sys.exit(0)

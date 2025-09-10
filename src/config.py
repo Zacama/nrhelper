@@ -52,8 +52,10 @@ class Config:
     hpbar_region_aspect_ratio: float
     hpbar_detect_std_height: int
     hpbar_border_v_peak_start: int
+    hpbar_border_v_peak_lower: int
     hpbar_border_v_peak_threshold: int
     hpbar_border_v_peak_interval: int
+    hpbar_recent_length_count: int
 
     bug_report_email: str
 

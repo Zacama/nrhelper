@@ -23,6 +23,7 @@ dayx_detect_langs:                # DAYX模板匹配语言
   chs: '简体中文'
   cht: '繁體中文'
   eng: 'English'
+  jp: '日本語'
 
 upper_hls_not_in_rain: [3, 80, 128]   # 最高亮度下不在雨中时血条hls颜色
 lower_hls_not_in_rain: [5, 52, 166]   # 最低亮度下不在雨中时血条hls颜色
@@ -41,11 +42,13 @@ full_map_error_threshold: 20          # 判断当前地图是否是完整地图�
 earth_shifting_error_threshold: 35    # 判断特殊地形的误差阈值
 map_pattern_match_interval: 2100      # 自动地图匹配间隔(秒)
 
-hpbar_region_aspect_ratio: 20         # 血条区域宽高比
+hpbar_region_aspect_ratio: 70         # 血条区域宽高比
 hpbar_detect_std_height: 15           # 血条检测标准高度
 hpbar_border_v_peak_start: 30         # 血条边界检测开始位置
+hpbar_border_v_peak_lower: 100        # 血条边界检测最低亮度
 hpbar_border_v_peak_threshold: 75     # 血条边界亮度提升阈值
 hpbar_border_v_peak_interval: 30      # 血条边界亮度区间宽度
+hpbar_recent_length_count: 10         # 记录过去多少次血条长度，用于稳定血条长度输出
 
 bug_report_email: "nroh-report@qq.com"
 

@@ -60,6 +60,8 @@ class BugReportWindow(QMainWindow):
         self.screenshot_list_label.setWordWrap(True)
         self.layout.addWidget(self.screenshot_list_label)
 
+        self.layout.addWidget(QLabel("程序的日志文件将自动打包在内"))
+
         self.submit_button = QPushButton("提交")
         self.submit_button.clicked.connect(self.submit_feedback)
         self.layout.addWidget(self.submit_button, alignment=Qt.AlignmentFlag.AlignCenter)
