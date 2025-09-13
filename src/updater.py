@@ -427,36 +427,41 @@ class Updater(QObject):
         return is_foreground
 
     def run(self):
-        self._running = True
-        info("Updater started.")
+        try:
+            self._running = True
+            info("Updater started.")
 
-        last_detect_time = 0
-        while self._running:
-            start_time = self.get_time()
+            last_detect_time = 0
+            while self._running:
+                start_time = self.get_time()
 
-            is_game_foreground = self.check_game_foreground()
+                is_game_foreground = self.check_game_foreground()
 
-            if self.get_time() - last_detect_time > self.detect_interval:
-                if not self.only_detect_when_game_foreground or is_game_foreground:
-                    self.detect_and_update_all()
-                last_detect_time = self.get_time()
+                if self.get_time() - last_detect_time > self.detect_interval:
+                    if not self.only_detect_when_game_foreground or is_game_foreground:
+                        self.detect_and_update_all()
+                    last_detect_time = self.get_time()
 
-            self.update_phase()
-            progress, text = self.get_phase_progress_text()
-            progress2, text2 = self.get_in_rain_progress_text()
+                self.update_phase()
+                progress, text = self.get_phase_progress_text()
+                progress2, text2 = self.get_in_rain_progress_text()
 
-            self.update_overlay_ui_state_signal.emit(OverlayUIState(
-                progress=progress,
-                text=text,
-                progress2=progress2,
-                text2=text2,
-                progress2_visible=progress2 > 0.0,
-            ))
+                self.update_overlay_ui_state_signal.emit(OverlayUIState(
+                    progress=progress,
+                    text=text,
+                    progress2=progress2,
+                    text2=text2,
+                    progress2_visible=progress2 > 0.0,
+                ))
 
-            elapsed = self.get_time() - start_time
-            sleep_time = Config.get().update_interval - elapsed
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+                elapsed = self.get_time() - start_time
+                sleep_time = Config.get().update_interval - elapsed
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+
+        except Exception as e:
+            error(f"Exception in updater run: {e}")
+            raise e
 
     def stop(self):
         self._running = False

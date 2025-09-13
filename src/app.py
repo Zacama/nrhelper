@@ -132,7 +132,11 @@ if __name__ == "__main__":
     
     updater_thread.start()
     overlay.show()
-    app.exec()
+
+    try:
+        app.exec()
+    except Exception as e:
+        error(f"Exception in app exec: {e}")
 
     settings_window.save_settings()
 

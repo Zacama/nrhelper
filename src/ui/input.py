@@ -74,40 +74,44 @@ class InputWorker(QObject):
         )
         self.keyboard_listener.start()
 
-        while self._running:
-            self._scan_joysticks()
-            # 处理 Pygame 事件 (只处理手柄相关事件)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self._running = False
-                    break
+        try:
+            while self._running:
+                self._scan_joysticks()
+                # 处理 Pygame 事件 (只处理手柄相关事件)
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self._running = False
+                        break
 
-                # --- 手柄事件处理 ---
-                elif event.type == pygame.JOYBUTTONDOWN:
-                    joystick_id = event.joy
-                    button_index = event.button
-                    self.joystick_button_pressed.emit(button_index)
+                    # --- 手柄事件处理 ---
+                    elif event.type == pygame.JOYBUTTONDOWN:
+                        joystick_id = event.joy
+                        button_index = event.button
+                        self.joystick_button_pressed.emit(button_index)
 
-                    if joystick_id not in self.current_pressed_joystick_buttons:
-                        self.current_pressed_joystick_buttons[joystick_id] = set()
-                    self.current_pressed_joystick_buttons[joystick_id].add(button_index)
-                    self.joystick_combo_pressed.emit(tuple(sorted(self.current_pressed_joystick_buttons[joystick_id])))
+                        if joystick_id not in self.current_pressed_joystick_buttons:
+                            self.current_pressed_joystick_buttons[joystick_id] = set()
+                        self.current_pressed_joystick_buttons[joystick_id].add(button_index)
+                        self.joystick_combo_pressed.emit(tuple(sorted(self.current_pressed_joystick_buttons[joystick_id])))
 
-                elif event.type == pygame.JOYBUTTONUP:
-                    joystick_id = event.joy
-                    button_index = event.button
-                    if joystick_id in self.current_pressed_joystick_buttons and \
-                       button_index in self.current_pressed_joystick_buttons[joystick_id]:
-                        self.current_pressed_joystick_buttons[joystick_id].remove(button_index)
-                        # self.joystick_combo_pressed.emit(tuple(sorted(self.current_pressed_joystick_buttons[joystick_id])))
-                       
-                elif event.type == pygame.JOYAXISMOTION:
-                    self.joystick_axis_moved.emit((event.joy, event.axis, event.value))
+                    elif event.type == pygame.JOYBUTTONUP:
+                        joystick_id = event.joy
+                        button_index = event.button
+                        if joystick_id in self.current_pressed_joystick_buttons and \
+                        button_index in self.current_pressed_joystick_buttons[joystick_id]:
+                            self.current_pressed_joystick_buttons[joystick_id].remove(button_index)
+                            # self.joystick_combo_pressed.emit(tuple(sorted(self.current_pressed_joystick_buttons[joystick_id])))
+                        
+                    elif event.type == pygame.JOYAXISMOTION:
+                        self.joystick_axis_moved.emit((event.joy, event.axis, event.value))
 
-                elif event.type == pygame.JOYHATMOTION:
-                    self.joystick_hat_moved.emit((event.joy, event.hat, event.value))
+                    elif event.type == pygame.JOYHATMOTION:
+                        self.joystick_hat_moved.emit((event.joy, event.hat, event.value))
 
-            clock.tick(10)
+                clock.tick(10)
+
+        except Exception as e:
+            error(f"Error in Pygame worker thread: {e}")
 
         info("Pygame worker thread finished.")
         if self.keyboard_listener and self.keyboard_listener.is_alive():
