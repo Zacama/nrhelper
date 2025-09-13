@@ -102,8 +102,10 @@ class SettingsWindow(QWidget):
         self.appearance_layout.addLayout(hide_text_layout)
 
         self.appearance_layout.addWidget(QLabel("提示：现在可以用鼠标左键拖动调整位置"))
-        self.appearance_layout.addWidget(QLabel("⚠️请使用无边框窗口模式启动游戏\n⚠️独占全屏模式下无法使用"))
-
+        self.appearance_layout.addWidget(QLabel("⚠️请使用窗口化/无边框窗口化模式启动游戏"))
+        self.appearance_layout.addWidget(QLabel("⚠️悬浮窗与部分AI补帧工具（小黄鸭）不兼容\n"
+                                                 "同时使用可能出现卡顿"))
+                                                
         # 输入设置
         self.input_group = QGroupBox("计时快捷键")
         self.input_layout = QVBoxLayout(self.input_group)
@@ -160,6 +162,7 @@ class SettingsWindow(QWidget):
         only_show_when_game_foreground_layout.addWidget(self.only_show_when_game_foreground_checkbox)
         self.performance_layout.addLayout(only_show_when_game_foreground_layout)
 
+        self.performance_layout.addWidget(QLabel("⚠️开启HDR（显示设置->高动态范围成像）\n可能导致检测失效"))
 
         # 自动计时设置
         self.auto_timer_group = QGroupBox("自动计时")
@@ -298,15 +301,18 @@ class SettingsWindow(QWidget):
         bug_report_button.clicked.connect(self.open_bug_report_window)
         self.other_layout.addWidget(bug_report_button)
 
+        open_log_and_abouts_layout = QHBoxLayout()
+        self.other_layout.addLayout(open_log_and_abouts_layout)
+
         open_log_button = QPushButton("打开日志位置")
         open_log_button.setStyleSheet(BUTTON_STYLE)
         open_log_button.clicked.connect(self.open_log_directory)
-        self.other_layout.addWidget(open_log_button)
+        open_log_and_abouts_layout.addWidget(open_log_button)
 
         abouts_button = QPushButton("关于")
         abouts_button.setStyleSheet(BUTTON_STYLE)
         abouts_button.clicked.connect(self.open_about_dialog)
-        self.other_layout.addWidget(abouts_button)
+        open_log_and_abouts_layout.addWidget(abouts_button)
 
         # HP检测设置
         self.hp_detect_group = QGroupBox("血条比例标记(beta)")
@@ -341,16 +347,16 @@ class SettingsWindow(QWidget):
         self.left_layout = QVBoxLayout()
         self.left_layout.addWidget(self.appearance_group)
         self.left_layout.addWidget(self.input_group)
-        self.left_layout.addWidget(self.performance_group)
         self.left_layout.addStretch()
 
         self.mid_layout = QVBoxLayout()
+        self.mid_layout.addWidget(self.performance_group)
         self.mid_layout.addWidget(self.auto_timer_group)
-        self.mid_layout.addWidget(self.hp_detect_group)
         self.mid_layout.addStretch()
 
         self.right_layout = QVBoxLayout()
         self.right_layout.addWidget(self.map_detect_group)
+        self.right_layout.addWidget(self.hp_detect_group)
         self.right_layout.addWidget(self.other_group)
         self.right_layout.addStretch()
 
@@ -607,7 +613,7 @@ class SettingsWindow(QWidget):
         layout.addWidget(img_widgets[5])
         layout.addWidget(QLabel("6. 之后正常游玩即可自动计时，若修改游戏分辨率则需要重新框选"))
         layout.addWidget(QLabel("ℹ️ 缩圈自动计时可能失效的场景：DAY X图标出现时正在浏览背包和地图\n"
-                                "ℹ️ 雨中冒险计时可能失效的场景：丝血 / 开启HDR / 开启画面滤镜"))
+                                "ℹ️ 雨中冒险计时可能失效的场景：当前血量过少 / 开启HDR"))
         layout.addWidget(QLabel("⚠️ 即使开启了自动检测，仍然推荐设置快捷键作为备用"))
         layout.addWidget(QLabel("7. 如果缩圈检测失效，可能是因为游戏语言不同，可以调整设置里的\"游戏语言\""))
         layout.addWidget(img_widgets[6])
