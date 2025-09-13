@@ -1,10 +1,10 @@
-name: Advanced Build and Release
+name: Build and Release
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
     inputs:
       version:
         description: 'Release version (e.g., v1.0.0)'
@@ -13,7 +13,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     
     outputs:
       app_version: ${{ steps.get_version.outputs.version }}
@@ -34,77 +34,74 @@ jobs:
       id: get_version
       run: |
         # 从 src/common.py 读取版本号
-        $content = Get-Content "src/common.py"
-        $versionLine = $content | Select-String 'APP_VERSION = ".*"'
-        $version = $versionLine.Line -replace '.*APP_VERSION = "(.*)\".*', '$1'
-        echo "version=$version" >> $env:GITHUB_OUTPUT
+        version=$(grep 'APP_VERSION = ' src/common.py | sed 's/.*APP_VERSION = "\(.*\)".*/\1/')
+        echo "version=$version" >> $GITHUB_OUTPUT
         echo "App version: $version"
-      shell: powershell
-      
+        
     - name: Create virtual environment and install dependencies
       run: |
         uv venv
         uv pip install -r requirements.txt
         uv pip install pyinstaller
         
-    - name: Build application
+    - name: Build application (following build.bat logic)
       run: |
-        # 激活虚拟环境
-        .\.venv\Scripts\Activate.ps1
+        # 激活虚拟环境并构建应用 (模拟 build.bat 行为)
+        source .venv/bin/activate
         
-        # 构建应用 (完全按照 build.bat 的行为)
-        pyinstaller --name "nightreign-overlay-helper" --windowed --icon="assets\icon.ico" src\app.py
+        # 构建应用 (按照 build.bat 的命令)
+        pyinstaller --name "nightreign-overlay-helper" --windowed --icon="assets/icon.ico" src/app.py
         
-        # 复制资源文件
-        xcopy /E /I /Y "assets" "dist\nightreign-overlay-helper\assets"
-        xcopy /E /I /Y "data" "dist\nightreign-overlay-helper\data"
-        copy "manual.txt" "dist\nightreign-overlay-helper\manual.txt"
-        copy "config.yaml" "dist\nightreign-overlay-helper\config.yaml"
+        # 复制资源文件 (模拟 build.bat 中的 xcopy 和 copy 命令)
+        cp -r assets dist/nightreign-overlay-helper/
+        cp -r data dist/nightreign-overlay-helper/
+        cp manual.txt dist/nightreign-overlay-helper/
+        cp config.yaml dist/nightreign-overlay-helper/
         
         # 验证构建结果
-        if (Test-Path "dist\nightreign-overlay-helper\nightreign-overlay-helper.exe") {
+        if [ -f "dist/nightreign-overlay-helper/nightreign-overlay-helper" ]; then
           echo "✓ 构建成功"
-          $size = (Get-Item "dist\nightreign-overlay-helper\nightreign-overlay-helper.exe").Length / 1MB
-          echo "可执行文件大小: $([math]::Round($size, 2)) MB"
-        } else {
+          ls -lh dist/nightreign-overlay-helper/nightreign-overlay-helper
+        else
           echo "✗ 构建失败"
           exit 1
-        }
-      shell: powershell
+        fi
       
     - name: Create release package
       run: |
         cd dist
         
-        # 创建版本信息文件
-        $tag = "${{ github.ref_name }}"
-        if (-not $tag) { $tag = "${{ github.event.inputs.version }}" }
+        # 获取标签名
+        if [ "${{ github.ref_name }}" != "" ]; then
+          TAG_NAME="${{ github.ref_name }}"
+        else
+          TAG_NAME="${{ github.event.inputs.version }}"
+        fi
         
-        $versionInfo = @"
-黑夜君临悬浮助手 $tag
-构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-构建环境: GitHub Actions
+        # 创建版本信息文件
+        cat > nightreign-overlay-helper/VERSION.txt << EOF
+黑夜君临悬浮助手 $TAG_NAME
+构建时间: $(date '+%Y-%m-%d %H:%M:%S')
+构建环境: GitHub Actions (Linux)
 代码版本: ${{ steps.get_version.outputs.version }}
 
 使用方法:
 1. 确保游戏 ELDEN RING NIGHTREIGN 已安装
-2. 运行 nightreign-overlay-helper.exe
+2. 运行 nightreign-overlay-helper.exe (Windows 版本)
 3. 按照界面提示进行设置
 
 更多信息请查看 manual.txt
-"@
-        
-        $versionInfo | Out-File -FilePath "nightreign-overlay-helper\VERSION.txt" -Encoding UTF8
+
+注意: 此版本在 Linux 环境构建，但目标平台为 Windows
+EOF
         
         # 创建压缩包
-        $zipName = "nightreign-overlay-helper-$tag.zip"
-        Compress-Archive -Path "nightreign-overlay-helper" -DestinationPath $zipName -Force
+        ZIP_NAME="nightreign-overlay-helper-$TAG_NAME.zip"
+        zip -r "$ZIP_NAME" nightreign-overlay-helper/
         
-        echo "Created: $zipName"
-        $zipSize = (Get-Item $zipName).Length / 1MB
-        echo "Package size: $([math]::Round($zipSize, 2)) MB"
-      shell: powershell
-      
+        echo "Created: $ZIP_NAME"
+        ls -lh "$ZIP_NAME"
+        
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -134,43 +131,46 @@ jobs:
         APP_VERSION="${{ needs.build.outputs.app_version }}"
         
         # 从 git 历史生成更新日志
-        CHANGELOG=$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD 2>/dev/null || echo "- 初始发布")
+        CHANGELOG=$(git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "HEAD~10")..HEAD 2>/dev/null || echo "- 初始发布")
         
         cat > release_notes.md << EOF
-        ## 🎮 黑夜君临悬浮助手 ${TAG_NAME}
+## 🎮 黑夜君临悬浮助手 ${TAG_NAME}
+
+### 📦 版本信息
+- **应用版本**: ${APP_VERSION}
+- **发布时间**: $(date '+%Y-%m-%d %H:%M:%S')
+- **构建环境**: GitHub Actions (Linux)
+
+### 🆕 更新内容
+${CHANGELOG}
+
+### 📥 下载和安装
+1. 下载下方的 \`nightreign-overlay-helper-${TAG_NAME}.zip\`
+2. 解压到任意目录
+3. 运行 \`nightreign-overlay-helper.exe\`
+4. 按照界面提示进行初始设置
+
+### 💻 系统要求
+- **操作系统**: Windows 10/11 (64位)
+- **游戏**: ELDEN RING NIGHTREIGN
+- **内存**: 建议 4GB 以上
+
+### 📖 使用说明
+详细使用方法请查看压缩包中的 \`manual.txt\` 文件。
+
+### 🐛 问题报告
+如遇到问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。
+
+---
+*此版本通过 GitHub Actions 自动构建和发布*
+EOF
         
-        ### 📦 版本信息
-        - **应用版本**: ${APP_VERSION}
-        - **发布时间**: $(date +'%Y-%m-%d %H:%M:%S')
-        - **构建环境**: GitHub Actions
-        
-        ### 🆕 更新内容
-        ${CHANGELOG}
-        
-        ### 📥 下载和安装
-        1. 下载下方的 \`nightreign-overlay-helper-${TAG_NAME}.zip\`
-        2. 解压到任意目录
-        3. 运行 \`nightreign-overlay-helper.exe\`
-        4. 按照界面提示进行初始设置
-        
-        ### 💻 系统要求
-        - **操作系统**: Windows 10/11 (64位)
-        - **游戏**: ELDEN RING NIGHTREIGN
-        - **内存**: 建议 4GB 以上
-        
-        ### 📖 使用说明
-        详细使用方法请查看压缩包中的 \`manual.txt\` 文件。
-        
-        ### 🐛 问题报告
-        如遇到问题，请在 [Issues](https://github.com/${{ github.repository }}/issues) 中反馈。
-        
-        ---
-        *此版本通过 GitHub Actions 自动构建和发布*
-        EOF
-        
-        echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-        cat release_notes.md >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        # 输出到 GitHub Actions
+        {
+          echo "release_notes<<EOF"
+          cat release_notes.md
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
         
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
