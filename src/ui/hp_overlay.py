@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor
 
-from src.common import APP_FULLNAME, APP_AUTHER
+from src.common import APP_FULLNAME, APP_AUTHOR
 from src.config import Config
 from src.logger import info, warning, error
 from src.ui.utils import set_widget_always_on_top, mss_region_to_qt_region
