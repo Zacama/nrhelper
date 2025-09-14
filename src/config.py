@@ -2,6 +2,8 @@ import yaml
 import os
 from dataclasses import dataclass
 
+from .common import load_yaml
+
 CONFIG_PATH = "config.yaml"
 
 _config: dict = {}
@@ -64,7 +66,6 @@ class Config:
         global _config, _config_mtime
         mtime = os.path.getmtime(CONFIG_PATH)
         if mtime != _config_mtime:
-            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-                _config = yaml.safe_load(f)
+            _config = load_yaml(CONFIG_PATH)
             _config_mtime = mtime
         return Config(**_config)

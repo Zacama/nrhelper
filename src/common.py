@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 from platformdirs import user_data_dir, user_desktop_dir
+import yaml
 
 
 APP_NAME = "nightreign-overlay-helper"
@@ -48,3 +49,24 @@ def get_readable_timedelta(t: timedelta) -> str:
         return f"{seconds}秒"
     
 
+def load_yaml(path: str) -> dict:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        print(f"Failed to load YAML file {path}: {e}")
+        return {}
+
+def save_yaml(path: str, data: dict):
+    # 保存到临时文件然后替换，防止写入过程中程序崩溃导致文件损坏
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp_path = path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, allow_unicode=True)
+        os.replace(tmp_path, path)
+    except Exception as e:
+        print(f"Failed to save YAML file {path}: {e}")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)

@@ -14,7 +14,7 @@ from src.updater import Updater
 from src.common import (
     APP_FULLNAME, APP_NAME, APP_VERSION,
     get_appdata_path, get_asset_path, get_desktop_path,
-    ICON_PATH, 
+    ICON_PATH, load_yaml, save_yaml,
 )
 from src.logger import info, warning, error
 from src.config import Config
@@ -385,8 +385,7 @@ class SettingsWindow(QWidget):
             info("Start to load settings")
             config = Config.get()
             if os.path.exists(SETTINGS_SAVE_PATH):
-                with open(SETTINGS_SAVE_PATH, "r") as f:
-                    data: dict = yaml.safe_load(f)
+                data = load_yaml(SETTINGS_SAVE_PATH)
                 info(f"Loaded settings from {SETTINGS_SAVE_PATH}")
             else:
                 data = {}
@@ -440,43 +439,43 @@ class SettingsWindow(QWidget):
 
     def save_settings(self):
         try:
-            with open(SETTINGS_SAVE_PATH, "w") as f:
-                yaml.safe_dump({
-                    # 外观
-                    "size": self.size_slider.value(),
-                    "opacity": self.opacity_slider.value(),
-                    "x": self.overlay.x(),
-                    "y": self.overlay.y(),
-                    "hide_text": self.hide_text_checkbox.isChecked(),
-                    # 快捷键
-                    "day_input_setting": asdict(self.day_input_setting_widget.get_setting()),
-                    "forward_day_input_setting": asdict(self.forward_day_input_setting_widget.get_setting()),
-                    "back_day_input_setting": asdict(self.back_day_input_setting_widget.get_setting()),
-                    "in_rain_input_setting": asdict(self.in_rain_input_setting_widget.get_setting()),
-                    # 性能
-                    "only_show_when_game_foreground": self.only_show_when_game_foreground_checkbox.isChecked(),
-                    "detect_interval": self.detect_interval_combobox.currentText(),
-                    # 自动计时
-                    "dayx_detect_enabled": self.dayx_detect_enable_checkbox.isChecked(),
-                    "in_rain_detect_enabled": self.in_rain_detect_enable_checkbox.isChecked(),
-                    "capture_dayx_hpbar_region_input_setting": asdict(self.capture_dayx_hpcolor_region_input_widget.get_setting()),
-                    "dayx_detect_lang": self.dayx_detect_lang,
-                    "day1_detect_region": self.day1_detect_region,
-                    "hp_bar_detect_region": self.hpcolor_detect_region,
-                    "align_to_detect_hp_color_input_setting": asdict(self.align_to_detect_hp_color_input_widget.get_setting()),
-                    "not_in_rain_hls": self.not_in_rain_hls,
-                    "in_rain_hls": self.in_rain_hls,
-                    # 地图识别
-                    "map_detect_enabled": self.map_detect_enable_checkbox.isChecked(),
-                    "capture_map_region_input_setting": asdict(self.capture_map_region_input_widget.get_setting()),
-                    "map_region": self.map_region,
-                    "set_to_detect_map_input_setting": asdict(self.set_to_detect_map_input_setting_widget.get_setting()),
-                    "show_map_overlay_input_setting": asdict(self.show_map_overlay_input_setting_widget.get_setting()),
-                    # 血条比例标记
-                    "hp_detect_enabled": self.hp_detect_enable_checkbox.isChecked(),
-                    "capture_hpbar_region_input_setting": asdict(self.capture_hpbar_region_input_widget.get_setting()),
-                    "hpbar_region": self.hpbar_region,
-                }, f)
+            data = {
+                # 外观
+                "size": self.size_slider.value(),
+                "opacity": self.opacity_slider.value(),
+                "x": self.overlay.x(),
+                "y": self.overlay.y(),
+                "hide_text": self.hide_text_checkbox.isChecked(),
+                # 快捷键
+                "day_input_setting": asdict(self.day_input_setting_widget.get_setting()),
+                "forward_day_input_setting": asdict(self.forward_day_input_setting_widget.get_setting()),
+                "back_day_input_setting": asdict(self.back_day_input_setting_widget.get_setting()),
+                "in_rain_input_setting": asdict(self.in_rain_input_setting_widget.get_setting()),
+                # 性能
+                "only_show_when_game_foreground": self.only_show_when_game_foreground_checkbox.isChecked(),
+                "detect_interval": self.detect_interval_combobox.currentText(),
+                # 自动计时
+                "dayx_detect_enabled": self.dayx_detect_enable_checkbox.isChecked(),
+                "in_rain_detect_enabled": self.in_rain_detect_enable_checkbox.isChecked(),
+                "capture_dayx_hpbar_region_input_setting": asdict(self.capture_dayx_hpcolor_region_input_widget.get_setting()),
+                "dayx_detect_lang": self.dayx_detect_lang,
+                "day1_detect_region": self.day1_detect_region,
+                "hp_bar_detect_region": self.hpcolor_detect_region,
+                "align_to_detect_hp_color_input_setting": asdict(self.align_to_detect_hp_color_input_widget.get_setting()),
+                "not_in_rain_hls": self.not_in_rain_hls,
+                "in_rain_hls": self.in_rain_hls,
+                # 地图识别
+                "map_detect_enabled": self.map_detect_enable_checkbox.isChecked(),
+                "capture_map_region_input_setting": asdict(self.capture_map_region_input_widget.get_setting()),
+                "map_region": self.map_region,
+                "set_to_detect_map_input_setting": asdict(self.set_to_detect_map_input_setting_widget.get_setting()),
+                "show_map_overlay_input_setting": asdict(self.show_map_overlay_input_setting_widget.get_setting()),
+                # 血条比例标记
+                "hp_detect_enabled": self.hp_detect_enable_checkbox.isChecked(),
+                "capture_hpbar_region_input_setting": asdict(self.capture_hpbar_region_input_widget.get_setting()),
+                "hpbar_region": self.hpbar_region,
+            }
+            save_yaml(SETTINGS_SAVE_PATH, data)
             info(f"Saved settings to {SETTINGS_SAVE_PATH}")
         except Exception as e:
             error(f"Failed to save settings: {e}")
