@@ -23,12 +23,20 @@ class OverlayUIState:
     scale: float | None = None
     opacity: float | None = None
     draggable: bool | None = None
-    progress: float | None = None
-    text: str | None = None
     visible: bool | None = None
-    progress2: float | None = None
-    text2: str | None = None
-    progress2_visible: bool | None = None
+
+    day_progress: float | None = None
+    day_text: str | None = None
+
+    rain_progress_visible: bool | None = None
+    rain_progress: float | None = None
+    rain_text: str | None = None
+
+    art_progress_visible: bool | None = None
+    art_progress: float | None = None
+    art_text: str | None = None
+    art_color: str | None = None
+
     set_x_to_center: bool = False
     map_pattern_match_text: str | None = None
     hide_text: bool | None = None
@@ -54,57 +62,76 @@ class OverlayWidget(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         set_widget_always_on_top(self)
         self.startTimer(50)
+
+        self.scale = 1.0
         
         self.layout: QVBoxLayout = QVBoxLayout(self)
 
-        self.progress_bar_layout = QHBoxLayout()
-        self.progress_bar_layout.setSpacing(1)
-        self.progress_bars: list[QProgressBar] = []
+        self.day_progress_layout = QHBoxLayout()
+        self.day_progress_layout.setSpacing(1)
+        self.day_pbs: list[QProgressBar] = []
         for i in range(4):
             length = Config.get().day_period_seconds[i]
-            progress_bar = QProgressBar()
-            progress_bar.setTextVisible(False)
-            progress_bar.setRange(0, 10000)
-            progress_bar.setMinimumWidth(10)
-            self.progress_bars.append(progress_bar)
-            self.progress_bar_layout.addWidget(progress_bar)
-            self.progress_bar_layout.setStretchFactor(progress_bar, length)
-        self.layout.addLayout(self.progress_bar_layout)
+            pb = QProgressBar()
+            pb.setTextVisible(False)
+            pb.setRange(0, 10000)
+            pb.setMinimumWidth(10)
+            self.day_pbs.append(pb)
+            self.day_progress_layout.addWidget(pb)
+            self.day_progress_layout.setStretchFactor(pb, length)
+        self.layout.addLayout(self.day_progress_layout)
 
-        self.text = ""
+        self.day_text = ""
         self.map_pattern_match_text = ""
-        self.label = QLabel()
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.day_label = QLabel()
+        self.day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         shadow_effect = QGraphicsDropShadowEffect()
         shadow_effect.setBlurRadius(10)
         shadow_effect.setColor(QColor(0, 0, 0, 150)) 
         shadow_effect.setOffset(0, 0) 
-        self.label.setGraphicsEffect(shadow_effect)
-        self.layout.addWidget(self.label)
+        self.day_label.setGraphicsEffect(shadow_effect)
+        self.layout.addWidget(self.day_label)
 
-        self.progress_bar2 = QProgressBar()
-        self.progress_bar2.setTextVisible(False)
-        self.progress_bar2.setRange(0, 10000)
-        self.layout.addWidget(self.progress_bar2)
+        self.rain_pb = QProgressBar()
+        self.rain_pb.setTextVisible(False)
+        self.rain_pb.setRange(0, 10000)
+        self.layout.addWidget(self.rain_pb)
 
-        self.label2 = QLabel()
-        self.label2.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.rain_label = QLabel()
+        self.rain_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         shadow_effect = QGraphicsDropShadowEffect()
         shadow_effect.setBlurRadius(10)
         shadow_effect.setColor(QColor(0, 0, 0, 150)) 
         shadow_effect.setOffset(0, 0) 
-        self.label2.setGraphicsEffect(shadow_effect)
-        self.layout.addWidget(self.label2)
+        self.rain_label.setGraphicsEffect(shadow_effect)
+        self.layout.addWidget(self.rain_label)
+
+        self.art_pb = QProgressBar()
+        self.art_pb.setTextVisible(False)
+        self.art_pb.setRange(0, 10000)
+        self.layout.addWidget(self.art_pb)
+        self.art_color = "#ffffff"
+
+        self.art_label = QLabel()
+        self.art_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        shadow_effect = QGraphicsDropShadowEffect()
+        shadow_effect.setBlurRadius(10)
+        shadow_effect.setColor(QColor(0, 0, 0, 150))
+        shadow_effect.setOffset(0, 0)
+        self.art_label.setGraphicsEffect(shadow_effect)
+        self.layout.addWidget(self.art_label)
 
         self.layout.addStretch()
         
         self.drag_position = QPoint()
         self.draggable = False
 
-        self.progress_css = Config.get().day_progress_css
-        self.text_css = Config.get().day_text_css
-        self.progress2_css = Config.get().in_rain_progress_css
-        self.text2_css = Config.get().in_rain_text_css
+        self.day_pb_css = Config.get().day_progress_css
+        self.day_text_css = Config.get().day_text_css
+        self.rain_pb_css = Config.get().in_rain_progress_css
+        self.rain_text_css = Config.get().in_rain_text_css
+        self.art_pb_css = Config.get().art_progress_css
+        self.art_text_css = Config.get().art_text_css
 
         self.visible = True
         self.only_show_when_game_foreground = False
@@ -112,20 +139,24 @@ class OverlayWidget(QWidget):
         self.is_menu_opened = False
         self.is_setting_opened = False
 
-        self.progress2_visible = False
+        self.rain_progress_visible = False
+        self.art_progress_visible = False
         self.hide_text = False 
        
         self.update_ui_state(OverlayUIState(
+            visible=True,
             scale=1.0,
             opacity=0.6,
             draggable=False,
-            progress=0,
-            text=INITIAL_TEXT,
+            day_progress=0,
+            day_text=INITIAL_TEXT,
             map_pattern_match_text="",
-            visible=True,
-            progress2=0,
-            text2="",
-            progress2_visible=False,
+            rain_progress=0,
+            rain_text="",
+            rain_progress_visible=False,
+            art_progress=0,
+            art_text="",
+            art_progress_visible=False,
             hide_text=False,
         ))
 
@@ -157,23 +188,28 @@ class OverlayWidget(QWidget):
             info("Overlay: Draggable mode OFF")
 
     def _apply_scale(self, scale: float):
+        self.scale = scale
         width = int(400 * scale)
         height = int(140 * scale)
         self.setFixedSize(width, height)
 
         font_size = int(14 * scale)
-        self.label.setStyleSheet(self.text_css.replace("{font_size}", str(font_size)))
-        self.label2.setStyleSheet(self.text2_css.replace("{font_size}", str(font_size)))
+        self.day_label.setStyleSheet(self.day_text_css.replace("{font_size}", str(font_size)))
+        self.rain_label.setStyleSheet(self.rain_text_css.replace("{font_size}", str(font_size)))
+        self.art_label.setStyleSheet(self.art_text_css.replace("{font_size}", str(font_size)))
 
         pb_height = int(16 * scale)
         pb_border_radius = int(pb_height / 5)
 
         for i in range(4):
-            self.progress_bars[i].setFixedHeight(pb_height)
-            self.progress_bars[i].setStyleSheet(self.progress_css.replace("{border_radius}", str(pb_border_radius)))
+            self.day_pbs[i].setFixedHeight(pb_height)
+            self.day_pbs[i].setStyleSheet(self.day_pb_css.replace("{border_radius}", str(pb_border_radius)))
 
-        self.progress_bar2.setFixedHeight(pb_height)
-        self.progress_bar2.setStyleSheet(self.progress2_css.replace("{border_radius}", str(pb_border_radius)))
+        self.rain_pb.setFixedHeight(pb_height)
+        self.rain_pb.setStyleSheet(self.rain_pb_css.replace("{border_radius}", str(pb_border_radius)))
+
+        self.art_pb.setFixedHeight(pb_height)
+        self.art_pb.setStyleSheet(self.art_pb_css.replace("{border_radius}", str(pb_border_radius)).replace("{color}", self.art_color))
 
     def update_ui_state(self, state: OverlayUIState):
         if state.x is not None and state.y is not None:
@@ -187,28 +223,37 @@ class OverlayWidget(QWidget):
             self._apply_scale(state.scale)
         if state.opacity is not None:
             self.setWindowOpacity(state.opacity)
-        if state.progress is not None:
+        if state.day_progress is not None:
             for i in range(4):
-                progress = min(1, max(0, (state.progress - i)))
-                self.progress_bars[i].setValue(int(progress * self.progress_bars[i].maximum()))
-        if state.text is not None:
-            self.text = state.text
-            self.label.setText(self.text + self.map_pattern_match_text 
-                               if self.text != INITIAL_TEXT else INITIAL_TEXT)
+                progress = min(1, max(0, (state.day_progress - i)))
+                self.day_pbs[i].setValue(int(progress * self.day_pbs[i].maximum()))
+        if state.day_text is not None:
+            self.day_text = state.day_text
+            self.day_label.setText(self.day_text + self.map_pattern_match_text 
+                               if self.day_text != INITIAL_TEXT else INITIAL_TEXT)
         if state.map_pattern_match_text is not None:
             self.map_pattern_match_text = state.map_pattern_match_text
-            self.label.setText(self.text + self.map_pattern_match_text
-                                 if self.text != INITIAL_TEXT else INITIAL_TEXT)
+            self.day_label.setText(self.day_text + self.map_pattern_match_text
+                                 if self.day_text != INITIAL_TEXT else INITIAL_TEXT)
         if state.draggable is not None:
             self._set_draggable(state.draggable)
         if state.visible is not None:
             self.visible = state.visible
-        if state.progress2 is not None:
-            self.progress_bar2.setValue(int(state.progress2 * self.progress_bar2.maximum()))
-        if state.text2 is not None:
-            self.label2.setText(state.text2)
-        if state.progress2_visible is not None:
-            self.progress2_visible = state.progress2_visible
+        if state.rain_progress is not None:
+            self.rain_pb.setValue(int(state.rain_progress * self.rain_pb.maximum()))
+        if state.rain_text is not None:
+            self.rain_label.setText(state.rain_text)
+        if state.rain_progress_visible is not None:
+            self.rain_progress_visible = state.rain_progress_visible
+        if state.art_progress is not None:
+            self.art_pb.setValue(int(state.art_progress * self.art_pb.maximum()))
+        if state.art_text is not None:
+            self.art_label.setText(state.art_text)
+        if state.art_progress_visible is not None:
+            self.art_progress_visible = state.art_progress_visible
+        if state.art_color is not None:
+            self.art_color = state.art_color
+            self._apply_scale(self.scale) 
         if state.only_show_when_game_foreground is not None:
             self.only_show_when_game_foreground = state.only_show_when_game_foreground
         if state.is_game_foreground is not None:
@@ -231,19 +276,27 @@ class OverlayWidget(QWidget):
             self.hide()
         
         if self.hide_text:
-            self.label.hide()
+            self.day_label.hide()
         else:
-            self.label.show()
+            self.day_label.show()
 
-        if self.hide_text or not self.progress2_visible:
-            self.label2.hide()
+        if self.hide_text or not self.rain_progress_visible:
+            self.rain_label.hide()
         else:
-            self.label2.show()
+            self.rain_label.show()
 
-        if self.progress2_visible:
-            self.progress_bar2.show()
+        if self.rain_progress_visible:
+            self.rain_pb.show()
         else:
-            self.progress_bar2.hide()
+            self.rain_pb.hide()
 
-        
-                  
+        if self.hide_text or not self.art_progress_visible:
+            self.art_label.hide()
+        else:
+            self.art_label.show()
+
+        if self.art_progress_visible:
+            self.art_pb.show()
+        else:
+            self.art_pb.hide()
+

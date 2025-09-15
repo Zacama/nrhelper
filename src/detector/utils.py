@@ -146,3 +146,25 @@ def draw_text(img: Image.Image, pos: tuple[int, int], text: str, size: int,
                               font=font, fill=outline_color)
     draw.text((pos[0] - text_size[0] // 2, pos[1] - text_size[1] // 2),
               text, font=font, fill=color)
+
+
+def match_template(
+    image: np.ndarray, 
+    template: np.ndarray, 
+    scales: tuple[float, float, int], 
+    mask: np.ndarray=None
+) -> tuple[tuple[int, int, int, float] | None, float]:
+    best_match = None
+    best_val = float('inf')
+    for scale in np.linspace(scales[0], scales[1], num=scales[2], endpoint=True):
+        resized_template = cv2.resize(template, (int(template.shape[1] * scale), int(template.shape[0] * scale)))
+        if resized_template.shape[0] > image.shape[0] or resized_template.shape[1] > image.shape[1]:
+            continue
+        if mask is not None:
+            mask = cv2.resize(mask, (resized_template.shape[1], resized_template.shape[0]))
+        result = cv2.matchTemplate(image, resized_template, cv2.TM_SQDIFF_NORMED, mask)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        if min_val < best_val:
+            best_val = min_val
+            best_match = (min_loc, resized_template.shape[1], resized_template.shape[0], scale)
+    return best_match, best_val

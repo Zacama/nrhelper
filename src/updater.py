@@ -17,6 +17,7 @@ from src.detector import (
     RainDetectParam,
     MapDetectParam,
     HpDetectParam,
+    ArtDetectParam,
 )
 from src.detector.map_info import MapPattern
 from src.ui.utils import is_window_in_foreground
@@ -95,6 +96,13 @@ class Updater(QObject):
         self.hpbar_region: tuple[int] = None
         self.hp_length: int = None
 
+        self.art_detect_enabled: bool = False
+        self.to_detect_art_time: float = 0.0
+        self.art_start_time: float = 0.0
+        self.art_region: tuple[int] = None
+        self.art_type: str = None
+
+
     def get_time(self) -> float:
         return time.time() * Config.get().time_scale
 
@@ -162,7 +170,7 @@ class Updater(QObject):
             text = f"DAY {'I' * self.day} - " + text
         return progress, text
     
-    def update_phase(self):
+    def update_phase_timer(self):
         config = Config.get()
         if self.current_phase is not None:
             index = self.current_phase.value
@@ -408,6 +416,55 @@ class Updater(QObject):
             self.hp_length = hp_length
             self.update_hp_length(self.hp_length)
 
+    # =============== Art Management =============== #
+
+    def use_art_by_shortcut(self):
+        config = Config.get()
+        self.to_detect_art_time = self.get_time() + config.art_detect_delay_seconds
+        info(f"Will detect art in {config.art_detect_delay_seconds} seconds.")
+    
+    def detect_and_update_art(self):
+        if not self.art_detect_enabled or \
+            self.to_detect_art_time is None or self.get_time() < self.to_detect_art_time:
+            return
+        
+        param = DetectParam(
+            art_detect_param=ArtDetectParam(
+                art_region=self.art_region,
+            )
+        )
+        result = self.detector.detect(param)
+        self.to_detect_art_time = None
+        
+        if result.art_detect_result.art_type is None:
+            info("No art detected.")
+            return
+        
+        info(f"detected art: {result.art_detect_result.art_type}")
+        self.art_type = result.art_detect_result.art_type
+        self.art_start_time = self.get_time()
+
+    def get_art_progress_text_color(self) -> tuple[float, str, str]:
+        if self.art_type is None or self.art_start_time is None:
+            return 0.0, "", None
+        
+        config = Config.get()
+        info = config.art_info[self.art_type]
+        delay = info.get("delay", 0)
+        duration = info.get("duration", 0)
+        text = info.get("text", "")
+        color = info.get("color", "#ffffff")
+
+        t = max(0, self.get_time() - self.art_start_time - delay)
+        if t > duration:
+            self.art_type = None
+            self.art_start_time = None
+            return 0.0, "", None
+        
+        progress = 1.0 - t / duration
+        text = f"{text} {format_period(int(max(duration - t, 0)))}"
+        return progress, text, color
+        
     # =============== Main Loop =============== #
 
     def detect_and_update_all(self):
@@ -415,6 +472,7 @@ class Updater(QObject):
         self.detect_and_update_in_rain()
         self.detect_and_update_map()
         self.detect_and_update_hp()
+        self.detect_and_update_art()
 
     def check_game_foreground(self) -> bool:
         is_foreground = is_window_in_foreground(GAME_WINDOW_TITLE)
@@ -449,16 +507,21 @@ class Updater(QObject):
                         self.detect_and_update_all()
                     last_detect_time = self.get_time()
 
-                self.update_phase()
-                progress, text = self.get_phase_progress_text()
-                progress2, text2 = self.get_in_rain_progress_text()
+                self.update_phase_timer()
+                day_progress, day_text = self.get_phase_progress_text()
+                rain_progress, rain_text = self.get_in_rain_progress_text()
+                art_progress, art_text, art_color = self.get_art_progress_text_color()
 
                 self.update_overlay_ui_state_signal.emit(OverlayUIState(
-                    progress=progress,
-                    text=text,
-                    progress2=progress2,
-                    text2=text2,
-                    progress2_visible=progress2 > 0.0,
+                    day_progress=day_progress,
+                    day_text=day_text,
+                    rain_progress=rain_progress,
+                    rain_text=rain_text,
+                    rain_progress_visible=rain_progress > 0.0,
+                    art_progress=art_progress,
+                    art_text=art_text,
+                    art_progress_visible=art_progress > 0.0,
+                    art_color=art_color,
                 ))
 
                 elapsed = self.get_time() - start_time

@@ -24,6 +24,8 @@ class Config:
     day_text_css: str
     in_rain_progress_css: str
     in_rain_text_css: str
+    art_progress_css: str
+    art_text_css: str
 
     time_scale: float
 
@@ -58,6 +60,12 @@ class Config:
     hpbar_border_v_peak_threshold: int
     hpbar_border_v_peak_interval: int
     hpbar_recent_length_count: int
+
+    art_detect_standard_size: int
+    art_detect_match_scales: tuple[float, float, int]
+    art_detect_threshold: float
+    art_detect_delay_seconds: float
+    art_info: dict[str, dict[str, float]]
 
     bug_report_email: str
 

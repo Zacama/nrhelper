@@ -104,8 +104,55 @@ class InputWorker(QObject):
                     elif event.type == pygame.JOYAXISMOTION:
                         self.joystick_axis_moved.emit((event.joy, event.axis, event.value))
 
+                        # 将 RT/LT 当做按钮处理
+                        joystick_id = event.joy
+                        axis_index = event.axis
+                        button_index = 1000 + axis_index
+                        axis_value = event.value
+                        LT_AXIS_INDEX = 4
+                        RT_AXIS_INDEX = 5
+                        TRIGGER_THRESHOLD = 0.5
+
+                        if axis_index in (LT_AXIS_INDEX, RT_AXIS_INDEX):
+                            if joystick_id not in self.current_pressed_joystick_buttons:
+                                self.current_pressed_joystick_buttons[joystick_id] = set()
+                            if axis_value > TRIGGER_THRESHOLD:
+                                if button_index not in self.current_pressed_joystick_buttons[joystick_id]:
+                                    self.current_pressed_joystick_buttons[joystick_id].add(button_index)
+                                    self.joystick_combo_pressed.emit(tuple(sorted(self.current_pressed_joystick_buttons[joystick_id])))
+                            if axis_value <= -TRIGGER_THRESHOLD:
+                                if button_index in self.current_pressed_joystick_buttons[joystick_id]:
+                                    self.current_pressed_joystick_buttons[joystick_id].remove(button_index)
+                                    # self.joystick_combo_pressed.emit(tuple(sorted(self.current_pressed_joystick_buttons[joystick_id])))
+
                     elif event.type == pygame.JOYHATMOTION:
                         self.joystick_hat_moved.emit((event.joy, event.hat, event.value))
+
+                        # 将方向键当做按钮处理
+                        joystick_id = event.joy
+                        hat_index = event.hat
+                        hat_value = event.value  # (x, y)
+                        HAT_BUTTON_MAP = {
+                            (1, 0): 2001,   # 右
+                            (-1, 0): 2002,  # 左
+                            (0, -1): 2003,  # 下
+                            (0, 1): 2004,   # 上
+                            (0, 0): None,   # 恢复
+                        }
+                        if hat_index == 0:  # 只处理第一个方向键帽
+                            button_index = HAT_BUTTON_MAP.get(hat_value, None)
+                            if joystick_id not in self.current_pressed_joystick_buttons:
+                                self.current_pressed_joystick_buttons[joystick_id] = set()
+                            if button_index is not None:
+                                self.current_pressed_joystick_buttons[joystick_id].add(button_index)
+                                self.joystick_combo_pressed.emit(tuple(sorted(self.current_pressed_joystick_buttons[joystick_id])))
+                            else:
+                                # 恢复所有方向键
+                                if joystick_id in self.current_pressed_joystick_buttons:
+                                    for dir_button in [2001, 2002, 2003, 2004]:
+                                        if dir_button in self.current_pressed_joystick_buttons[joystick_id]:
+                                            self.current_pressed_joystick_buttons[joystick_id].remove(dir_button)
+                                    # self.joystick_combo_pressed.emit(tuple(sorted(self.current_pressed_joystick_buttons[joystick_id])))
 
                 clock.tick(10)
 
@@ -166,6 +213,12 @@ JOYSTICK_BUTTON_NAMES = {
     7: "Start",
     8: "LStick",
     9: "RStick",
+    1004: "LT",
+    1005: "RT",
+    2001: "Right",
+    2002: "Left",
+    2003: "Down",
+    2004: "Up",
 }
 
 def format_combo(combo_type, combo_tuple):

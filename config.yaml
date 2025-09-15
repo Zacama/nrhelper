@@ -50,7 +50,30 @@ hpbar_border_v_peak_threshold: 75     # 血条边界亮度提升阈值
 hpbar_border_v_peak_interval: 30      # 血条边界亮度区间宽度
 hpbar_recent_length_count: 10         # 记录过去多少次血条长度，用于稳定血条长度输出
 
+art_detect_standard_size: 50   # 绝招模板图片匹配标准尺寸(宽和高)
+art_detect_match_scales: [0.95, 1.05, 5]  # 绝招模板匹配缩放范围(最小比例,最大比例,步数)
+art_detect_threshold: 0.1      # 绝招模板匹配得分阈值（越低越敏感）
+art_detect_delay_seconds: 0.5  # 按下绝招后的检测延迟时间(秒)
+art_info: # 绝招时间信息
+  duchess:
+    delay: 2
+    duration: 13
+    text: "落幕之章隐身时间"
+    color: "#cccccc"
+  recluse:
+    delay: 2
+    duration: 13
+    text: "血魂歌标记时间"
+    color: "#d11010"
+  revenant:   
+    delay: 2
+    duration: 13
+    text: "不死行军无敌时间"
+    color: "#9bdfdf"
+
+
 bug_report_email: "nroh-report@qq.com"
+
 
 # 缩圈进度条样式
 day_progress_css: |
@@ -82,4 +105,20 @@ in_rain_progress_css: |
 
 # 雨中冒险文字样式
 in_rain_text_css: |
+  color: white; font-weight: bold; font-size: {font_size}px;
+
+# 绝招进度条样式
+art_progress_css: |
+  QProgressBar {
+      border: 2px solid #5a5a5a;
+      border-radius: {border_radius}px;
+      background-color: rgba(60, 60, 60, 0.7);
+      text-align: center;
+  }
+  QProgressBar::chunk {
+      background-color: {color};
+  }
+
+# 绝招冒险文字样式
+art_text_css: |
   color: white; font-weight: bold; font-size: {font_size}px;

@@ -34,6 +34,7 @@ DETECT_REGION_TUTORIAL_IMG_PATH = get_asset_path("detect_region_tutorial/{i}.jpg
 COLOR_ALIGN_TUTORIAL_IMG_PATH = get_asset_path("color_align_tutorial/{i}.jpg")
 MAP_DETECT_TUTORIAL_IMG_PATH = get_asset_path("map_detect_tutorial/{i}.jpg")
 HP_DETECT_TUTORIAL_IMG_PATH = get_asset_path("hp_detect_tutorial/{i}.jpg")
+ART_DETECT_TUTORIAL_IMG_PATH = get_asset_path("art_detect_tutorial/{i}.jpg")
 
 
 class SettingsWindow(QWidget):
@@ -165,7 +166,7 @@ class SettingsWindow(QWidget):
         self.performance_layout.addWidget(QLabel("⚠️开启HDR（显示设置->高动态范围成像）\n可能导致检测失效"))
 
         # 自动计时设置
-        self.auto_timer_group = QGroupBox("自动计时")
+        self.auto_timer_group = QGroupBox("缩圈&雨中冒险倒计时")
         self.auto_timer_layout = QVBoxLayout(self.auto_timer_group)
 
         screenshot_region_help_layout = QHBoxLayout()
@@ -315,7 +316,7 @@ class SettingsWindow(QWidget):
         open_log_and_abouts_layout.addWidget(abouts_button)
 
         # HP检测设置
-        self.hp_detect_group = QGroupBox("血条比例标记(beta)")
+        self.hp_detect_group = QGroupBox("血条比例标记")
         self.hp_detect_layout = QVBoxLayout(self.hp_detect_group)
         
         hp_detect_help_layout = QHBoxLayout()
@@ -343,27 +344,60 @@ class SettingsWindow(QWidget):
         self.hpbar_region_label = QLabel("当前血条区域: 未设置")
         self.hp_detect_layout.addWidget(self.hpbar_region_label)
 
-        # Layouts   
-        self.left_layout = QVBoxLayout()
-        self.left_layout.addWidget(self.appearance_group)
-        self.left_layout.addWidget(self.input_group)
-        self.left_layout.addStretch()
+        # 绝招计时器设置
+        self.art_timer_group = QGroupBox("绝招倒计时")
+        self.art_timer_layout = QVBoxLayout(self.art_timer_group)
 
-        self.mid_layout = QVBoxLayout()
-        self.mid_layout.addWidget(self.performance_group)
-        self.mid_layout.addWidget(self.auto_timer_group)
-        self.mid_layout.addStretch()
+        art_detect_help_layout = QHBoxLayout()
+        art_help_button = QPushButton("查看绝招倒计时帮助")
+        art_help_button.setStyleSheet(BUTTON_STYLE)
+        art_help_button.clicked.connect(self.show_capture_art_region_tutorial)
+        art_detect_help_layout.addWidget(art_help_button)
+        self.art_timer_layout.addLayout(art_detect_help_layout)
 
-        self.right_layout = QVBoxLayout()
-        self.right_layout.addWidget(self.map_detect_group)
-        self.right_layout.addWidget(self.hp_detect_group)
-        self.right_layout.addWidget(self.other_group)
-        self.right_layout.addStretch()
+        art_detect_enable_layout = QHBoxLayout()
+        self.art_detect_enable_checkbox = QCheckBox("启用绝招倒计时")
+        self.art_detect_enable_checkbox.stateChanged.connect(self.update_art_detect_enable)
+        art_detect_enable_layout.addWidget(self.art_detect_enable_checkbox)
+        art_detect_enable_layout.addStretch()
+        self.art_timer_layout.addLayout(art_detect_enable_layout)
+
+        self.art_region = None
+        capture_art_region_input_setting_layout = QHBoxLayout()
+        capture_art_region_input_setting_layout.addWidget(QLabel("截取绝招图标区域快捷键"))
+        self.capture_art_region_input_widget = InputSettingWidget(self.input)
+        self.capture_art_region_input_widget.input_triggered.connect(self.capture_art_region)
+        capture_art_region_input_setting_layout.addWidget(self.capture_art_region_input_widget)
+        self.art_timer_layout.addLayout(capture_art_region_input_setting_layout)
+
+        use_art_input_setting_layout = QHBoxLayout()
+        use_art_input_setting_layout.addWidget(QLabel("绝招快捷键"))
+        self.use_art_input_setting_widget = InputSettingWidget(self.input)
+        self.use_art_input_setting_widget.input_triggered.connect(self.updater.use_art_by_shortcut)
+        use_art_input_setting_layout.addWidget(self.use_art_input_setting_widget)
+        self.art_timer_layout.addLayout(use_art_input_setting_layout)
+
+        self.art_region_label = QLabel("当前绝招图标区域: 未设置")
+        self.art_timer_layout.addWidget(self.art_region_label)
+
+        # Layouts  
+        layouts = [QVBoxLayout() for _ in range(3)]
+
+        layouts[0].addWidget(self.appearance_group)
+        layouts[0].addWidget(self.input_group)
+
+        layouts[1].addWidget(self.performance_group)
+        layouts[1].addWidget(self.auto_timer_group)
+        layouts[1].addWidget(self.other_group)
+
+        layouts[2].addWidget(self.map_detect_group)
+        layouts[2].addWidget(self.hp_detect_group)
+        layouts[2].addWidget(self.art_timer_group)
 
         self.layout: QHBoxLayout = QHBoxLayout(self)
-        self.layout.addLayout(self.left_layout)
-        self.layout.addLayout(self.mid_layout)
-        self.layout.addLayout(self.right_layout)
+        for l in layouts:
+            l.addStretch()
+            self.layout.addLayout(l)
 
         # 加载设置
         self.load_settings()
@@ -431,6 +465,12 @@ class SettingsWindow(QWidget):
             self.capture_hpbar_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_hpbar_region_input_setting")))
             self.hpbar_region = data.get("hpbar_region", None)
             self.update_hpbar_region()
+            # 绝招计时器
+            load_checkbox_state(self.art_detect_enable_checkbox, data.get("art_detect_enabled", True))
+            self.capture_art_region_input_widget.set_setting(InputSetting.load_from_dict(data.get("capture_art_region_input_setting")))
+            self.use_art_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("use_art_input_setting")))
+            self.art_region = data.get("art_region", None)
+            self.update_art_region()
 
             info("Settings loaded successfully")
         except Exception as e:
@@ -474,6 +514,11 @@ class SettingsWindow(QWidget):
                 "hp_detect_enabled": self.hp_detect_enable_checkbox.isChecked(),
                 "capture_hpbar_region_input_setting": asdict(self.capture_hpbar_region_input_widget.get_setting()),
                 "hpbar_region": self.hpbar_region,
+                # 绝招计时器
+                "art_detect_enabled": self.art_detect_enable_checkbox.isChecked(),
+                "capture_art_region_input_setting": asdict(self.capture_art_region_input_widget.get_setting()),
+                "use_art_input_setting": asdict(self.use_art_input_setting_widget.get_setting()),
+                "art_region": self.art_region,
             }
             save_yaml(SETTINGS_SAVE_PATH, data)
             info(f"Saved settings to {SETTINGS_SAVE_PATH}")
@@ -563,7 +608,7 @@ class SettingsWindow(QWidget):
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
         region_result = window.capture_and_show()
         if region_result is None:
-            warning("Screenshot region setting canceled")
+            warning("Day1 hpcolor region setting canceled")
             return
         else:
             if screenshot := window.screenshot_at_saving:
@@ -852,7 +897,7 @@ class SettingsWindow(QWidget):
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
         region_result = window.capture_and_show()
         if region_result is None:
-            warning("Map region setting canceled")
+            warning("Hpbar region setting canceled")
             return
         else:
             if screenshot := window.screenshot_at_saving:
@@ -903,6 +948,76 @@ class SettingsWindow(QWidget):
             self.hpbar_region_label.setText("❌未设置血条区域")
         else:
             self.hpbar_region_label.setText(f"✔️已设置血条区域: {self.hpbar_region}")
+
+    # =========================== Art Detect =========================== #
+
+    def update_art_detect_enable(self, state):
+        self.updater.art_detect_enabled = self.art_detect_enable_checkbox.isChecked()
+        info(f"Art detect enabled: {self.updater.art_detect_enabled}")
+    
+    def capture_art_region(self):
+        COLOR_ART_REGION = "#3235eb"
+        SCREENSHOT_WINDOW_CONFIG = {
+            'annotation_buttons': [
+                {'pos': (0.5, 0.5), 'size': 32, 'color': COLOR_ART_REGION, 'text': '点我并框出 绝招图标 的区域'},
+            ],
+            'control_buttons': {
+                'cancel':   {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save':     {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+            }
+        }
+        window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
+        region_result = window.capture_and_show()
+        if region_result is None:
+            warning("Art region setting canceled")
+            return
+        else:
+            if screenshot := window.screenshot_at_saving:
+                save_path = get_appdata_path("art_region_screenshot.jpg")
+                screenshot.save(save_path)
+            for item in region_result:
+                if item['color'] == COLOR_ART_REGION:
+                    self.art_region = list(item['rect'])
+                self.update_art_region()
+            self.save_settings()
+
+    def show_capture_art_region_tutorial(self):
+        tutorial_imgs = [QPixmap(str(ART_DETECT_TUTORIAL_IMG_PATH).format(i=i)) for i in range(1, 6)]
+        img_widgets: list[QLabel] = []
+        for img in tutorial_imgs:
+            img_widget = QLabel()
+            img = img.scaledToHeight(min(100, img.height()), Qt.TransformationMode.SmoothTransformation)
+            img_widget.setPixmap(img)
+            img_widget.setStyleSheet("border: 1px solid #ccc;")
+            img_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            img_widgets.append(img_widget)
+        msg = QMessageBox(self)
+        msg.setMaximumWidth(400)
+        msg.setWindowTitle("绝招倒计时")
+        layout: QVBoxLayout = QVBoxLayout()
+        layout.addWidget(QLabel("该功能用于显示绝招效果的倒计时，支持的角色：女爵、隐士、复仇者\n"
+                                "只能显示自己使用的绝招效果的倒计时"))
+        layout.addWidget(QLabel("1. 首先在设置界面调整\"截取绝招图标区域快捷键\""))
+        layout.addWidget(img_widgets[0])
+        layout.addWidget(QLabel("2. 在任意有绝招图标的游戏画面下按下设置的快捷键，并框选绝招图标的区域"))
+        layout.addWidget(img_widgets[1])
+        layout.addWidget(QLabel("⚠️ 框选的要求：框和绝招图标的圆的边缘贴合"))
+        layout.addWidget(img_widgets[2])
+        layout.addWidget(QLabel("3. 回到设置界面看到\"已设置\""))
+        layout.addWidget(img_widgets[3])
+        layout.addWidget(QLabel("4. 然后设置\"绝招快捷键\"为你的游戏中使用绝招的按键即可"))
+        layout.addWidget(img_widgets[4])
+        msg.layout().addLayout(layout, 0, 0)
+        msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg.exec()
+
+    def update_art_region(self):
+        self.updater.art_region = self.art_region
+        info(f"Updated art region: art_region={self.art_region}")
+        if self.art_region is None:
+            self.art_region_label.setText("❌未设置绝招图标区域")
+        else:
+            self.art_region_label.setText(f"✔️已设置绝招图标区域: {self.art_region}")
 
     # =========================== Other =========================== #
     

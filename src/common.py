@@ -70,3 +70,4 @@ def save_yaml(path: str, data: dict):
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
