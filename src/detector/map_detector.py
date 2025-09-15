@@ -166,7 +166,7 @@ class MapDetector:
         min_scale, max_scale, scale_num = PREDICT_EARTH_SHIFTING_SCALES
         for map_id, map_img in MAP_BGS.items():
             score = float('inf')
-            for scale in np.linspace(min_scale, max_scale, scale_num):
+            for scale in np.linspace(min_scale, max_scale, scale_num, endpoint=True):
                 size = (int(PREDICT_EARTH_SHIFTING_SIZE[0] * scale), int(PREDICT_EARTH_SHIFTING_SIZE[1] * scale))
                 map_resized = cv2.resize(map_img, size, interpolation=CV2_RESIZE_METHOD).astype(int)
                 for dx in range(-offset, offset+1, stride):

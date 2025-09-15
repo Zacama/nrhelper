@@ -25,7 +25,7 @@ def get_image_mask(image: Image.Image) -> np.ndarray:
 
 def match_mask(image: np.ndarray, template: np.ndarray) -> float:
     t = time.time()
-    scale_range = np.linspace(*Config.get().scale_range)
+    scale_range = np.linspace(*Config.get().scale_range, endpoint=True)
     score = float('inf')
     for scale in scale_range:
         w, h = template.shape[::-1]
