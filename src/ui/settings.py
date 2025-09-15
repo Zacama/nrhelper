@@ -878,6 +878,8 @@ class SettingsWindow(QWidget):
         msg.setMaximumWidth(400)
         msg.setWindowTitle("血条比例标记")
         layout: QVBoxLayout = QVBoxLayout()
+        layout.addWidget(QLabel("该功能用于在血条上显示：20%（血量偏低触发词条）\n"
+                                "85%（非满血时触发的负面词条）和100%（满血）三个标记"))
         layout.addWidget(QLabel("1. 首先在设置界面调整\"截取血条区域快捷键\""))
         layout.addWidget(img_widgets[0])
         layout.addWidget(QLabel("2. 在任意有血条的游戏画面下按下设置的快捷键，并框选血条的区域"))
@@ -889,8 +891,7 @@ class SettingsWindow(QWidget):
         layout.addWidget(img_widgets[2])
         layout.addWidget(QLabel("3. 回到设置界面看到\"已设置\"即可"))
         layout.addWidget(img_widgets[3])
-        layout.addWidget(QLabel("4. 之后游玩时，在血条的上方会悬浮显示20%（血量偏低触发词条）\n"
-                                "85%（非满血时触发的负面词条）和100%（满血）三个标记\n"))
+        layout.addWidget(QLabel("4. 之后游玩时，在血条的上方就会悬浮显示三个标记\n"))
         msg.layout().addLayout(layout, 0, 0)
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
