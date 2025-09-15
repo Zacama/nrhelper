@@ -47,9 +47,8 @@ class InputWorker(QObject):
                     if 1 <= char_ord <= 26:
                         # 将其转换回对应的字母 'a'-'z'
                         return chr(char_ord + 96) 
-                    
                     # 如果是其他可打印字符，直接返回
-                    return key.char
+                    return key.char.lower()
                 else:
                     return None
             
