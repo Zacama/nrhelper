@@ -6,6 +6,7 @@ from PIL import Image
 from src.common import GAME_WINDOW_TITLE
 from src.config import Config
 from src.logger import info, warning, error
+from src.ui.input import InputWorker
 from src.ui.overlay import OverlayWidget, OverlayUIState
 from src.ui.map_overlay import MapOverlayWidget, MapOverlayUIState
 from src.ui.hp_overlay import HpOverlayWidget, HpOverlayUIState
@@ -45,9 +46,11 @@ class Updater(QObject):
     update_overlay_ui_state_signal = pyqtSignal(OverlayUIState)
     update_map_overlay_ui_state_signal = pyqtSignal(MapOverlayUIState)
     hp_overlay_ui_state_signal = pyqtSignal(HpOverlayUIState)
+    input_block_signals_signal = pyqtSignal(bool)
 
     def __init__(
         self, 
+        input: InputWorker,
         overlay: OverlayWidget, 
         map_overlay: MapOverlayWidget,
         hp_overlay: HpOverlayWidget,
@@ -58,6 +61,8 @@ class Updater(QObject):
         self.detector = DetectorManager()
         self.only_detect_when_game_foreground: bool = False
         self.detect_interval = 0.2
+
+        self.input_block_signals_signal.connect(input.blockSignals)
 
         self.overlay = overlay
         self.update_overlay_ui_state_signal.connect(self.overlay.update_ui_state)
@@ -423,6 +428,8 @@ class Updater(QObject):
         self.hp_overlay_ui_state_signal.emit(HpOverlayUIState(
             is_game_foreground=is_foreground,
         ))
+
+        self.input_block_signals_signal.emit(self.only_detect_when_game_foreground and not is_foreground)
         
         return is_foreground
 

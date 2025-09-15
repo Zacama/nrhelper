@@ -66,7 +66,7 @@ if __name__ == "__main__":
     map_overlay = MapOverlayWidget()
     hp_overlay = HpOverlayWidget()
 
-    updater = Updater(overlay, map_overlay, hp_overlay)
+    updater = Updater(input, overlay, map_overlay, hp_overlay)
     settings_window = SettingsWindow(overlay, map_overlay, updater, input)
     
     # 创建系统托盘图标和菜单
