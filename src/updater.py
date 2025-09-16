@@ -59,6 +59,9 @@ class Updater(QObject):
         super().__init__()
         self._running = False
 
+        self.is_setting_opened = False
+        self.is_menu_opened = False
+
         self.detector = DetectorManager()
         self.only_detect_when_game_foreground: bool = False
         self.detect_interval = 0.2
@@ -487,7 +490,8 @@ class Updater(QObject):
             is_game_foreground=is_foreground,
         ))
 
-        self.input_block_signals_signal.emit(not self.overlay.isVisible())
+        self.input_block_signals_signal.emit(self.only_detect_when_game_foreground and \
+            not (is_foreground or self.is_setting_opened or self.is_menu_opened))
         
         return is_foreground
 

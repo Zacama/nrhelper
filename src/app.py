@@ -96,10 +96,12 @@ if __name__ == "__main__":
     def on_menu_show():
         overlay.is_menu_opened = True
         map_overlay.is_menu_opened = True
+        updater.is_menu_opened = True
         # info("Menu opened")
     def on_menu_hide():
         overlay.is_menu_opened = False
         map_overlay.is_menu_opened = False
+        updater.is_menu_opened = False
         # info("Menu closed")
 
     overlay.right_click_signal.connect(show_menu_at_cursor_pos)

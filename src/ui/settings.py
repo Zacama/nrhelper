@@ -534,6 +534,7 @@ class SettingsWindow(QWidget):
         self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
             is_setting_opened=True,
         ))
+        self.updater.is_setting_opened = True
         # self.load_settings()
         super().showEvent(event)
         info("Settings window opened")
@@ -546,6 +547,7 @@ class SettingsWindow(QWidget):
         self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
             is_setting_opened=False,
         ))
+        self.updater.is_setting_opened = False
         self.save_settings()
         super().closeEvent(event)
         info("Settings window closed")
