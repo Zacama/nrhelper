@@ -487,7 +487,7 @@ class Updater(QObject):
             is_game_foreground=is_foreground,
         ))
 
-        self.input_block_signals_signal.emit(self.only_detect_when_game_foreground and not is_foreground)
+        self.input_block_signals_signal.emit(not self.overlay.isVisible())
         
         return is_foreground
 
