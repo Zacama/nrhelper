@@ -73,11 +73,14 @@ class InputWorker(QObject):
         )
         self.keyboard_listener.start()
 
-        try:
-            while self._running:
+        while self._running:
+            # 处理 Pygame 事件 (只处理手柄相关事件)
+            try:
                 self._scan_joysticks()
-                # 处理 Pygame 事件 (只处理手柄相关事件)
-                for event in pygame.event.get():
+
+                events = pygame.event.get()
+
+                for event in events:
                     if event.type == pygame.QUIT:
                         self._running = False
                         break
@@ -156,13 +159,15 @@ class InputWorker(QObject):
 
                 clock.tick(10)
 
-        except Exception as e:
-            error(f"Error in Pygame worker thread: {e}")
+            except Exception as e:
+                error(f"Error in Pygame event loop: {e}")
+                self.current_pressed_joystick_buttons.clear()
+                self.current_pressed_keys.clear()
 
         info("Pygame worker thread finished.")
         if self.keyboard_listener and self.keyboard_listener.is_alive():
             self.keyboard_listener.stop()
-            self.keyboard_listener.join()
+            self.keyboard_listener.join(timeout=5.0)
             info("pynput keyboard listener stopped.")
         pygame.quit()
 
