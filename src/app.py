@@ -1,4 +1,6 @@
 import sys
+import time
+import os
 from PyQt6.QtCore import QThread, Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QAction, QCursor
 from PyQt6.QtWidgets import (
@@ -121,33 +123,41 @@ if __name__ == "__main__":
     updater_thread = QThread()
     updater.moveToThread(updater_thread)
     updater_thread.started.connect(updater.run)
-    
+    updater_thread.start()
+
     # 清理：程序退出时，停止worker并等待线程结束
     def on_quit():
         info("Stopping worker thread...")
         updater.stop()
         updater_thread.quit()
-        updater_thread.wait()
+        if not updater_thread.wait(1000):
+            print("Updater thread did not exit in time. Forcing termination.")
+            updater_thread.terminate()
+        else:
+            info("Updater thread stopped.")
         input.stop()
         input_thread.quit()
-        input_thread.wait()
-        info("Thread stopped. Exiting.")
+        if not input_thread.wait(1000):
+            print("Input thread did not exit in time. Forcing termination.")
+            input_thread.terminate()
+        else:
+            info("Input thread stopped.")
+        info("All Thread stopped.")
+
+        tray_icon.deleteLater()
+
     app.aboutToQuit.connect(on_quit)
     
-    updater_thread.start()
     overlay.show()
 
     try:
-        app.exec()
+        exit_code = app.exec() 
+        info(f"QApp event loop finished with exit code {exit_code}.")
     except Exception as e:
+        exit_code = 1
         error(f"Exception in app exec: {e}")
 
     settings_window.save_settings()
-    info("QApp exited.")
 
-    import threading
-    for thread in threading.enumerate():
-        info(f"Thread {thread.name} alive: {thread.is_alive()}")
-
-    sys.exit(0)
-    print("Program exited.")
+    time.sleep(1)
+    os._exit(exit_code)

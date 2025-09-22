@@ -170,6 +170,7 @@ class InputWorker(QObject):
             self.keyboard_listener.join(timeout=5.0)
             info("pynput keyboard listener stopped.")
         pygame.quit()
+        info("InputWorker stopped.")
 
     def _on_key_press(self, key):
         try:

@@ -540,6 +540,7 @@ class Updater(QObject):
         except Exception as e:
             error(f"Exception in updater run: {e}")
             raise e
+        info("Updater stopped.")
 
     def stop(self):
         self._running = False
