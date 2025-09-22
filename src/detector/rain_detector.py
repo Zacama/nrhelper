@@ -7,7 +7,7 @@ from PyQt6.QtGui import QPixmap
 from mss.base import MSSBase
 
 from src.config import Config
-from src.logger import info, warning, error
+from src.logger import info, warning, error, debug
 from src.detector.utils import grab_region
 
 
@@ -61,8 +61,7 @@ class RainDetector:
             not_in_rain_ratio = calc_pixel_num(hls, lower_hls_not_in_rain, upper_hls_not_in_rain) / total_pixel_num
             in_rain_ratio     = calc_pixel_num(hls, lower_hls_in_rain,     upper_hls_in_rain)     / total_pixel_num
 
-            # print(f"{not_in_rain_ratio:.2f}, {in_rain_ratio:.2f}")
-            # print("detect in rain time: ", time.time() - t)
+            debug(f"RainDetector: cost: {time.time() - t:.3f}s, not_in_rain_ratio={not_in_rain_ratio:.3f}, in_rain_ratio={in_rain_ratio:.3f}")
             return not_in_rain_ratio, in_rain_ratio
         except Exception as e:
             error(f"Detect in rain error")

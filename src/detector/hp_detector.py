@@ -7,7 +7,7 @@ from PyQt6.QtGui import QPixmap
 from mss.base import MSSBase
 
 from src.config import Config
-from src.logger import info, warning, error
+from src.logger import info, warning, error, debug
 from src.detector.utils import grab_region, resize_by_height_keep_aspect_ratio
 
 
@@ -92,7 +92,7 @@ class HpDetector:
         # debug_img = cv2.vconcat([np.array(img), debug_img])
         # cv2.imwrite("sandbox/debug_hpbar_v_channel.png", debug_img)
         
-        # print(f"HpDetector: lengths={self.recent_lengths}, time={time.time() - t:.3f}s")
+        debug(f"HpDetector: lengths={self.recent_lengths}, time={time.time() - t:.3f}s")
         return ret
     
 

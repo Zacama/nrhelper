@@ -6,7 +6,7 @@ import time
 from mss.base import MSSBase
 
 from src.config import Config
-from src.logger import info, warning, error
+from src.logger import info, warning, error, debug
 from src.common import get_appdata_path, get_data_path
 from src.detector.map_info import (
     load_map_info, 
@@ -153,7 +153,7 @@ class MapDetector:
             # cv2.circle(img, (int(cx), int(cy)), 2, (0, 0, 255), 3)
             # cv2.imwrite("sandbox/full_map_test.jpg", cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
             error = abs(cr - img.shape[0] * 0.425) ** 2
-        # print(f"Full map match error: {error:.4f}")
+        debug(f"MapDetector: Full map match error: {error:.4f}")
         return error
     
     def _match_earth_shifting(self, img: np.ndarray) -> tuple[int, float]:
@@ -181,7 +181,7 @@ class MapDetector:
             if score < best_score:
                 best_score = score
                 best_map_id = map_id
-        info(f"Match earth shifting: best map {best_map_id} score {best_score:.4f}, time cost: {time.time() - t:.4f}s")
+        info(f"MapDetector: Match earth shifting: best map {best_map_id} score {best_score:.4f}, time cost: {time.time() - t:.4f}s")
         return best_map_id, best_score
     
     def _get_poi_image(self, construct_type: int) -> Image.Image:
@@ -475,7 +475,7 @@ class MapDetector:
         info(f"Draw overlay image size: {draw_size} time cost: {time.time() - t:.4f}s")
 
         # 保存结果用于调试
-        img.convert('RGB').save(get_appdata_path(f"map_overlay_result.png"))
+        img.convert('RGB').save(get_appdata_path(f"map_overlay_result.jpg"))
 
         return img
 

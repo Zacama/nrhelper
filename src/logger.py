@@ -23,6 +23,19 @@ def setup_logger(level: int = INFO):
     logger.addHandler(file_handler)
     return logger
 
+def set_log_level(level: int):
+    global _logger
+    if _logger is None:
+        _logger = setup_logger(level)
+    else:
+        _logger.setLevel(level)
+
+def debug(msg: str):
+    global _logger
+    if _logger is None:
+        _logger = setup_logger()
+    _logger.debug(msg)
+
 def info(msg: str):
     global _logger
     if _logger is None:

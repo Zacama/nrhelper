@@ -143,6 +143,11 @@ if __name__ == "__main__":
         error(f"Exception in app exec: {e}")
 
     settings_window.save_settings()
+    info("QApp exited.")
 
-    info("App exited.")
+    import threading
+    for thread in threading.enumerate():
+        info(f"Thread {thread.name} alive: {thread.is_alive()}")
+
     sys.exit(0)
+    print("Program exited.")

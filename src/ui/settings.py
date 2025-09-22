@@ -16,7 +16,7 @@ from src.common import (
     get_appdata_path, get_asset_path, get_desktop_path,
     ICON_PATH, load_yaml, save_yaml,
 )
-from src.logger import info, warning, error
+from src.logger import info, warning, error, set_log_level, INFO, DEBUG
 from src.config import Config
 from src.ui.overlay import OverlayUIState, OverlayWidget
 from src.ui.map_overlay import MapOverlayWidget, MapOverlayUIState
@@ -28,7 +28,7 @@ from src.ui.bug_report import BugReportWindow
 from src.ui.utils import process_region_to_adapt_scale, get_qt_screen_by_mss_region
 
 
-BUTTON_STYLE = "padding: 4px;"
+BUTTON_STYLE = "padding: 4px; min-height: 20px;"
 
 SETTINGS_SAVE_PATH = get_appdata_path("settings.yaml")
 DETECT_REGION_TUTORIAL_IMG_PATH = get_asset_path("detect_region_tutorial/{i}.jpg")
@@ -299,10 +299,20 @@ class SettingsWindow(QWidget):
         self.other_group = QGroupBox("其他")
         self.other_layout = QVBoxLayout(self.other_group)
 
+        debug_layout = QHBoxLayout()
+        self.other_layout.addLayout(debug_layout)
+
         bug_report_button = QPushButton("BUG反馈")
         bug_report_button.setStyleSheet(BUTTON_STYLE)
         bug_report_button.clicked.connect(self.open_bug_report_window)
-        self.other_layout.addWidget(bug_report_button)
+        debug_layout.addWidget(bug_report_button)
+
+        debug_log_layout = QHBoxLayout()
+        self.debug_log_checkbox = QCheckBox("开启调试日志")
+        self.debug_log_checkbox.setChecked(False)
+        self.debug_log_checkbox.stateChanged.connect(self.update_debug_log)
+        debug_log_layout.addWidget(self.debug_log_checkbox)
+        debug_layout.addLayout(debug_log_layout)
 
         open_log_and_abouts_layout = QHBoxLayout()
         self.other_layout.addLayout(open_log_and_abouts_layout)
@@ -473,6 +483,8 @@ class SettingsWindow(QWidget):
             self.use_art_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("use_art_input_setting")))
             self.art_region = data.get("art_region", None)
             self.update_art_region()
+            # 其他
+            load_checkbox_state(self.debug_log_checkbox, data.get("debug_log_enabled", False))
 
             info("Settings loaded successfully")
         except Exception as e:
@@ -521,6 +533,8 @@ class SettingsWindow(QWidget):
                 "capture_art_region_input_setting": asdict(self.capture_art_region_input_widget.get_setting()),
                 "use_art_input_setting": asdict(self.use_art_input_setting_widget.get_setting()),
                 "art_region": self.art_region,
+                # 其他
+                "debug_log_enabled": self.debug_log_checkbox.isChecked(),
             }
             save_yaml(SETTINGS_SAVE_PATH, data)
             info(f"Saved settings to {SETTINGS_SAVE_PATH}")
@@ -1054,3 +1068,9 @@ class SettingsWindow(QWidget):
             parent=self,
         )
         w.show()
+
+    def update_debug_log(self, state):
+        enabled = self.debug_log_checkbox.isChecked()
+        set_log_level(INFO if not enabled else DEBUG)
+        info(f"Debug log enabled: {enabled}")
+

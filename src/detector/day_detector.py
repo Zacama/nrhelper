@@ -7,7 +7,7 @@ from mss.base import MSSBase
 import yaml
 
 from src.config import Config
-from src.logger import info, warning, error
+from src.logger import info, warning, error, debug
 from src.common import get_data_path
 from src.detector.utils import resize_by_height_keep_aspect_ratio, grab_region
 
@@ -112,8 +112,7 @@ class DayDetector:
             score_day1 = match_region(day1_region, template.day1_mask)
             score_day2 = match_region(day2_region, template.day2_mask)
             score_day3 = match_region(day3_region, template.day3_mask)
-            # print("detect dayx time: ", time.time() - t)
-            # print(f"lang: {template.lang} {score_day1:.2f}, {score_day2:.2f}, {score_day3:.2f}")
+            debug(f"detect dayx time: {time.time() - t} lang: {template.lang} score: {score_day1:.2f}, {score_day2:.2f}, {score_day3:.2f}")
             return score_day1, score_day2, score_day3
         except Exception as e:
             error(f"Detect dayx error")
