@@ -53,6 +53,7 @@ class MapOverlayWidget(QWidget):
         self.label = QLabel(self)
         self.label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label.setScaledContents(True)
 
         self.map_pattern_match_time: float = 0.0
         self.map_pattern_matching: bool = False
@@ -83,10 +84,11 @@ class MapOverlayWidget(QWidget):
         if img is None:
             self.label.clear()
             return
-        img = img.convert("RGBA").resize((self.width(), self.height()), Image.Resampling.BICUBIC)
+        img = img.convert("RGBA")
         data = img.tobytes("raw", "RGBA")
         qimg = QImage(data, img.width, img.height, QImage.Format.Format_RGBA8888)
         pixmap = QPixmap.fromImage(qimg)
+        pixmap.setDevicePixelRatio(self.devicePixelRatio())
         self.label.setPixmap(pixmap)
         
     def update_ui_state(self, state: MapOverlayUIState):
