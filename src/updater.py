@@ -369,6 +369,10 @@ class Updater(QObject):
                 self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
                     clear_image=True,
                     map_pattern_matching=True,
+                    x=self.map_region[0],
+                    y=self.map_region[1],
+                    w=self.map_region[2],
+                    h=self.map_region[3],
                     opacity=1.0,
                 ))
                 self.update_overlay_ui_state_signal.emit(OverlayUIState(
