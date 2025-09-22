@@ -25,6 +25,7 @@ from src.ui.capture_region import CaptureRegionWindow
 from src.detector.rain_detector import RainDetector
 from src.detector.utils import hls_to_rgb
 from src.ui.bug_report import BugReportWindow
+from src.ui.utils import process_region_to_adapt_scale, get_qt_screen_by_mss_region
 
 
 BUTTON_STYLE = "padding: 4px;"
@@ -45,6 +46,7 @@ class SettingsWindow(QWidget):
         super().__init__()
         config = Config.get()
         self.overlay = overlay
+        self.map_overlay = map_overlay
         self.update_overlay_ui_state_signal.connect(overlay.update_ui_state)
         self.update_map_overlay_ui_state_signal.connect(map_overlay.update_ui_state)
         self.updater = updater
@@ -855,14 +857,21 @@ class SettingsWindow(QWidget):
             self.save_settings()
 
     def update_map_region(self):
-        if self.updater.map_region != self.map_region:
+        map_region = self.map_region
+        if map_region is not None:
+            old_map_region = map_region.copy()
+            screen = get_qt_screen_by_mss_region(map_region)
+            scale = screen.devicePixelRatio()
+            map_region = process_region_to_adapt_scale(map_region, scale)
+            info(f"Map region adapted to screen scale {scale}: {old_map_region} -> {map_region}")
+        if self.updater.map_region != map_region:
             self.updater.set_to_detect_map_pattern_once()
-        self.updater.map_region = self.map_region
-        info(f"Updated map region: map_region={self.map_region}")
-        if self.map_region is None:
+        self.updater.map_region = map_region
+        info(f"Updated map region: map_region={map_region}")
+        if map_region is None:
             self.map_region_label.setText("❌未设置地图区域")
         else:
-            self.map_region_label.setText(f"✔️已设置地图区域: {self.map_region}")
+            self.map_region_label.setText(f"✔️已设置地图区域: {map_region}")
 
     # =========================== Performance =========================== #
 

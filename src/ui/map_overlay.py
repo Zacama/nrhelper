@@ -90,7 +90,7 @@ class MapOverlayWidget(QWidget):
         pixmap = QPixmap.fromImage(qimg)
         pixmap.setDevicePixelRatio(self.devicePixelRatio())
         self.label.setPixmap(pixmap)
-        
+
     def update_ui_state(self, state: MapOverlayUIState):
         if state.x is not None:
             region = mss_region_to_qt_region((state.x, state.y, state.w, state.h))

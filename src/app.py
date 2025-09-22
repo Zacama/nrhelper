@@ -53,6 +53,8 @@ if __name__ == "__main__":
     info(f"Starting app v{APP_VERSION}...")
 
     QApplication.setAttribute(Qt.ApplicationAttribute.AA_Use96Dpi)
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+
     app = QApplication(sys.argv)
 
     log_system_and_screen_info(app)

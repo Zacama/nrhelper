@@ -180,11 +180,7 @@ class CaptureRegionWindow(QDialog):
         if not screen: return None
         self.screenshot_pixmap = screen.grabWindow(0)
         info(f"Start to capture region at screen {tuple(screen.geometry().getRect())} with devicePixelRatio {screen.devicePixelRatio()}")
-        ui_w, ui_h = screen.size().width(), screen.size().height()
-        self.screenshot_pixmap = self.screenshot_pixmap.scaled(
-            ui_w, ui_h, 
-            Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
-        )
+        self.screenshot_pixmap.setDevicePixelRatio(screen.devicePixelRatio())
         self.setGeometry(screen.geometry())
         self._setup_ui()
         self.exec()
@@ -200,17 +196,26 @@ class CaptureRegionWindow(QDialog):
 
         # 2. 绘制半透明遮罩
         painter.fillRect(self.rect(), QColor(0, 0, 0, 100))
+
+        def scale_rect(rect: QRect) -> QRect:
+            dpr = self.screen().devicePixelRatio()
+            return QRect(
+                int(rect.x() * dpr),
+                int(rect.y() * dpr),
+                int(rect.width() * dpr),
+                int(rect.height() * dpr)
+            )
         
         # 3. 绘制所有已创建的矩形区域（使其恢复明亮）
-        for item in self.rect_items:
-            painter.drawPixmap(item.rect, self.screenshot_pixmap, item.rect)
+        for item in self.rect_items: 
+            painter.drawPixmap(item.rect, self.screenshot_pixmap, scale_rect(item.rect))
             item.draw(painter)
 
         # 4. 如果正在绘制新矩形，绘制它
         if self.is_drawing and self.start_pos and self.current_pos:
             drawing_rect = QRect(self.start_pos, self.current_pos).normalized()
             # 绘制明亮区域
-            painter.drawPixmap(drawing_rect, self.screenshot_pixmap, drawing_rect)
+            painter.drawPixmap(drawing_rect, self.screenshot_pixmap, scale_rect(drawing_rect))
             # 绘制边框
             painter.setPen(QPen(QColor(self.current_color), 2))
             painter.setBrush(Qt.BrushStyle.NoBrush)

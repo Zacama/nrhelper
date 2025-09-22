@@ -475,7 +475,7 @@ class MapDetector:
         info(f"Draw overlay image size: {draw_size} time cost: {time.time() - t:.4f}s")
 
         # 保存结果用于调试
-        img.convert('RGB').save(get_appdata_path(f"map_overlay_result.jpg"))
+        img.convert('RGB').save(get_appdata_path(f"map_overlay_result.png"))
 
         return img
 
