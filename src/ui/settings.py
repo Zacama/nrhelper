@@ -1,32 +1,25 @@
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, 
-    QLabel, QSlider, QGroupBox, QCheckBox, QPushButton,
-    QMessageBox, QApplication, QFrame, QComboBox,
-)
-from PyQt6.QtGui import QPixmap, QIcon
-import yaml
-from dataclasses import dataclass, asdict
-import os
 import ctypes
+import os
+from dataclasses import asdict
 
-from src.updater import Updater
-from src.common import (
-    APP_FULLNAME, APP_NAME, APP_VERSION,
-    get_appdata_path, get_asset_path, get_desktop_path,
-    ICON_PATH, load_yaml, save_yaml,
-)
-from src.logger import info, warning, error, set_log_level, INFO, DEBUG
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon, QPixmap
+from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton, QSlider, QVBoxLayout,
+                             QWidget)
+
+from src.common import (APP_FULLNAME, APP_NAME, APP_VERSION, ICON_PATH, get_appdata_path, get_asset_path, get_desktop_path, load_yaml, save_yaml)
 from src.config import Config
-from src.ui.overlay import OverlayUIState, OverlayWidget
-from src.ui.map_overlay import MapOverlayWidget, MapOverlayUIState
-from src.ui.input import InputWorker, InputSettingWidget, InputSetting
-from src.ui.capture_region import CaptureRegionWindow
 from src.detector.rain_detector import RainDetector
 from src.detector.utils import hls_to_rgb
+from src.logger import DEBUG, INFO, error, info, set_log_level, warning
 from src.ui.bug_report import BugReportWindow
-from src.ui.utils import process_region_to_adapt_scale, get_qt_screen_by_mss_region
-
+from src.ui.capture_region import CaptureRegionWindow
+from src.ui.input import InputSetting, InputSettingWidget, InputWorker
+from src.ui.map_overlay import MapOverlayUIState, MapOverlayWidget
+from src.ui.nightlord_selector import EARTH_SHIFTING_NAMES, NIGHTLORD_NAMES, NightlordSelectorDialog
+from src.ui.overlay import OverlayUIState, OverlayWidget
+from src.ui.utils import get_qt_screen_by_mss_region, process_region_to_adapt_scale
+from src.updater import Updater
 
 BUTTON_STYLE = "padding: 4px; min-height: 20px;"
 
@@ -74,7 +67,7 @@ class SettingsWindow(QWidget):
         self.size_slider.valueChanged.connect(self.update_overlay_size)
         size_layout.addWidget(self.size_slider)
         self.appearance_layout.addLayout(size_layout)
-        
+
         opacity_layout = QHBoxLayout()
         opacity_layout.addWidget(QLabel("透明度"))
         self.opacity_slider = QSlider(Qt.Orientation.Horizontal)
@@ -107,8 +100,8 @@ class SettingsWindow(QWidget):
         self.appearance_layout.addWidget(QLabel("提示：现在可以用鼠标左键拖动调整位置"))
         self.appearance_layout.addWidget(QLabel("⚠️请使用窗口化/无边框窗口化模式启动游戏"))
         self.appearance_layout.addWidget(QLabel("⚠️悬浮窗与部分AI补帧工具（小黄鸭）不兼容\n"
-                                                 "同时使用可能出现卡顿"))
-                                                
+                                                "同时使用可能出现卡顿"))
+
         # 输入设置
         self.input_group = QGroupBox("计时快捷键")
         self.input_layout = QVBoxLayout(self.input_group)
@@ -142,7 +135,6 @@ class SettingsWindow(QWidget):
         self.input_layout.addLayout(in_rain_input_layout)
 
         self.input_layout.addWidget(QLabel("点击按钮修改，支持键盘或手柄组合键"))
-
 
         # 性能设置
         self.performance_group = QGroupBox("性能")
@@ -231,7 +223,7 @@ class SettingsWindow(QWidget):
         self.align_to_detect_hp_color_input_widget.input_triggered.connect(self.capture_hp_color)
         align_to_detect_hp_color_layout.addWidget(self.align_to_detect_hp_color_input_widget)
         self.auto_timer_layout.addLayout(align_to_detect_hp_color_layout)
-        
+
         self.not_in_rain_hls = None
         self.in_rain_hls = None
         hp_color_layout = QHBoxLayout()
@@ -288,6 +280,31 @@ class SettingsWindow(QWidget):
         set_to_detect_map_input_setting_layout.addWidget(self.set_to_detect_map_input_setting_widget)
         self.map_detect_layout.addLayout(set_to_detect_map_input_setting_layout)
 
+        manual_select_nightlord_input_setting_layout = QHBoxLayout()
+        manual_select_nightlord_input_setting_layout.addWidget(QLabel("手动选择夜王快捷键"))
+        self.manual_select_nightlord_input_setting_widget = InputSettingWidget(self.input)
+        self.manual_select_nightlord_input_setting_widget.input_triggered.connect(self.open_nightlord_selector)
+        manual_select_nightlord_input_setting_layout.addWidget(self.manual_select_nightlord_input_setting_widget)
+        self.map_detect_layout.addLayout(manual_select_nightlord_input_setting_layout)
+
+        self.manual_constraint_label = QLabel("手动限定范围：未设置")
+        self.map_detect_layout.addWidget(self.manual_constraint_label)
+
+        # 切换候选地图的快捷键
+        prev_candidate_input_setting_layout = QHBoxLayout()
+        prev_candidate_input_setting_layout.addWidget(QLabel("上一个候选地图快捷键"))
+        self.prev_candidate_input_setting_widget = InputSettingWidget(self.input)
+        self.prev_candidate_input_setting_widget.input_triggered.connect(self.switch_to_prev_candidate)
+        prev_candidate_input_setting_layout.addWidget(self.prev_candidate_input_setting_widget)
+        self.map_detect_layout.addLayout(prev_candidate_input_setting_layout)
+
+        next_candidate_input_setting_layout = QHBoxLayout()
+        next_candidate_input_setting_layout.addWidget(QLabel("下一个候选地图快捷键"))
+        self.next_candidate_input_setting_widget = InputSettingWidget(self.input)
+        self.next_candidate_input_setting_widget.input_triggered.connect(self.switch_to_next_candidate)
+        next_candidate_input_setting_layout.addWidget(self.next_candidate_input_setting_widget)
+        self.map_detect_layout.addLayout(next_candidate_input_setting_layout)
+
         show_map_overlay_input_setting_layout = QHBoxLayout()
         show_map_overlay_input_setting_layout.addWidget(QLabel("显示/隐藏信息快捷键"))
         self.show_map_overlay_input_setting_widget = InputSettingWidget(self.input)
@@ -330,7 +347,7 @@ class SettingsWindow(QWidget):
         # HP检测设置
         self.hp_detect_group = QGroupBox("血条比例标记")
         self.hp_detect_layout = QVBoxLayout(self.hp_detect_group)
-        
+
         hp_detect_help_layout = QHBoxLayout()
         hp_help_button = QPushButton("查看血条比例标记帮助")
         hp_help_button.setStyleSheet(BUTTON_STYLE)
@@ -414,15 +431,16 @@ class SettingsWindow(QWidget):
         # 加载设置
         self.load_settings()
 
-
     def load_settings(self):
         try:
             def load_checkbox_state(checkbox: QCheckBox, state: bool):
                 checkbox.setChecked(not state)
                 checkbox.setChecked(state)
+
             def load_slider_value(slider: QSlider, value: int):
                 slider.setValue(value - 1)
                 slider.setValue(value)
+
             def load_combobox_value(combobox: QComboBox, value: str):
                 combobox.setCurrentText(None)
                 combobox.setCurrentText(value)
@@ -471,6 +489,9 @@ class SettingsWindow(QWidget):
             self.map_region = data.get("map_region", None)
             self.update_map_region()
             self.set_to_detect_map_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("set_to_detect_map_input_setting")))
+            self.manual_select_nightlord_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("manual_select_nightlord_input_setting")))
+            self.prev_candidate_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("prev_candidate_input_setting")))
+            self.next_candidate_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("next_candidate_input_setting")))
             self.show_map_overlay_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("show_map_overlay_input_setting")))
             # 血条比例标记
             load_checkbox_state(self.hp_detect_enable_checkbox, data.get("hp_detect_enabled", True))
@@ -523,6 +544,9 @@ class SettingsWindow(QWidget):
                 "capture_map_region_input_setting": asdict(self.capture_map_region_input_widget.get_setting()),
                 "map_region": self.map_region,
                 "set_to_detect_map_input_setting": asdict(self.set_to_detect_map_input_setting_widget.get_setting()),
+                "manual_select_nightlord_input_setting": asdict(self.manual_select_nightlord_input_setting_widget.get_setting()),
+                "prev_candidate_input_setting": asdict(self.prev_candidate_input_setting_widget.get_setting()),
+                "next_candidate_input_setting": asdict(self.next_candidate_input_setting_widget.get_setting()),
                 "show_map_overlay_input_setting": asdict(self.show_map_overlay_input_setting_widget.get_setting()),
                 # 血条比例标记
                 "hp_detect_enabled": self.hp_detect_enable_checkbox.isChecked(),
@@ -540,7 +564,6 @@ class SettingsWindow(QWidget):
             info(f"Saved settings to {SETTINGS_SAVE_PATH}")
         except Exception as e:
             error(f"Failed to save settings: {e}")
-
 
     def showEvent(self, event):
         self.update_overlay_ui_state_signal.emit(OverlayUIState(
@@ -619,8 +642,8 @@ class SettingsWindow(QWidget):
                 {'pos': (0.8, 0.2), 'size': 32, 'color': COLOR_DAY_I, 'text': '点我并框出 DAY I 图标 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (0.8, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (0.8, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel': {'pos': (0.8, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save': {'pos': (0.8, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
@@ -683,7 +706,7 @@ class SettingsWindow(QWidget):
         msg.layout().addLayout(layout, 0, 0)
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
-    
+
     def update_day1_hpcolor_regions(self):
         self.updater.day1_detect_region = self.day1_detect_region
         self.updater.hpcolor_detect_region = self.hpcolor_detect_region
@@ -696,7 +719,7 @@ class SettingsWindow(QWidget):
             self.hpcolor_detect_region_label.setText("❌未设置雨中冒险检测区域")
         else:
             self.hpcolor_detect_region_label.setText(f"✔️已设置雨中冒险检测区域: {self.hpcolor_detect_region}")
- 
+
     # ===========================  Hp Color Align =========================== #
 
     def update_in_rain_detect_enable(self, state):
@@ -710,11 +733,11 @@ class SettingsWindow(QWidget):
         SCREENSHOT_WINDOW_CONFIG = {
             'annotation_buttons': [
                 {'pos': (0.8, 0.1), 'size': 32, 'color': COLOR_NOT_IN_RAIN, 'text': '点我并框出 正常颜色血条 的区域'},
-                {'pos': (0.8, 0.2), 'size': 32, 'color': COLOR_IN_RAIN,     'text': '点我并框出 雨中颜色血条 的区域'},
+                {'pos': (0.8, 0.2), 'size': 32, 'color': COLOR_IN_RAIN, 'text': '点我并框出 雨中颜色血条 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (0.8, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (0.8, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel': {'pos': (0.8, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save': {'pos': (0.8, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
@@ -732,7 +755,7 @@ class SettingsWindow(QWidget):
             self.save_settings()
 
     def clear_hp_color(self):
-        reply = QMessageBox.question(self, '确认', '确定要重置血条颜色设置为默认吗？', 
+        reply = QMessageBox.question(self, '确认', '确定要重置血条颜色设置为默认吗？',
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                      QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
@@ -849,11 +872,11 @@ class SettingsWindow(QWidget):
                 {'pos': (0.5, 0.1), 'size': 32, 'color': COLOR_MAP_REGION, 'text': '点我并框出 地图 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel': {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save': {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
-        window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
+        window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input, force_square=True)
         region_result = window.capture_and_show()
         if region_result is None:
             warning("Map region setting canceled")
@@ -887,6 +910,49 @@ class SettingsWindow(QWidget):
         else:
             self.map_region_label.setText(f"✔️已设置地图区域: {map_region}")
 
+    def open_nightlord_selector(self):
+        """打开夜王和地形选择对话框"""
+        if self.map_region is None:
+            QMessageBox.warning(
+                self,
+                "未设置地图区域",
+                "请先在设置中截取地图区域后再使用此功能。",
+                QMessageBox.StandardButton.Ok
+            )
+            return
+
+        dialog = NightlordSelectorDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            selection = dialog.get_selection()
+            if selection:
+                self.updater.manual_select_and_update_map(
+                    selection.nightlord,
+                    selection.earth_shifting
+                )  # 触发一次识别
+                self.update_manual_constraint_label(selection.nightlord, selection.earth_shifting)
+                info(f"Manual map constraint set: Nightlord={selection.nightlord}, EarthShifting={selection.earth_shifting}")
+            else:
+                warning("Nightlord selection returned without valid data")
+        else:
+            info("Nightlord selection canceled")
+
+    def update_manual_constraint_label(self, nightlord: int | None, earth_shifting: int | None = None):
+        """更新手动限定范围的标签显示"""
+        if nightlord is None:
+            self.manual_constraint_label.setText("手动限定范围：未设置")
+        else:
+            nightlord_name = NIGHTLORD_NAMES.get(nightlord, f"未知({nightlord})")
+            earth_shifting_name = EARTH_SHIFTING_NAMES.get(earth_shifting, f"未知({earth_shifting})") if earth_shifting is not None else "未设置"
+            self.manual_constraint_label.setText(f"✔️手动限定：夜王={nightlord_name}, 地形={earth_shifting_name}")
+
+    def switch_to_next_candidate(self):
+        """切换到下一个候选地图"""
+        self.updater.switch_to_next_map_candidate()
+
+    def switch_to_prev_candidate(self):
+        """切换到上一个候选地图"""
+        self.updater.switch_to_prev_map_candidate()
+
     # =========================== Performance =========================== #
 
     def update_detect_interval(self, text: str):
@@ -903,7 +969,7 @@ class SettingsWindow(QWidget):
         info(f"Overlay only show when game foreground: {enabled}")
 
     # =========================== HP Detect =========================== #
-        
+
     def update_hp_detect_enable(self, state):
         self.updater.hp_detect_enabled = self.hp_detect_enable_checkbox.isChecked()
         info(f"HP detect enabled: {self.updater.hp_detect_enabled}")
@@ -915,8 +981,8 @@ class SettingsWindow(QWidget):
                 {'pos': (0.5, 0.1), 'size': 32, 'color': COLOR_HPBAR_REGION, 'text': '点我并框出 血条 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel': {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save': {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
@@ -979,7 +1045,7 @@ class SettingsWindow(QWidget):
     def update_art_detect_enable(self, state):
         self.updater.art_detect_enabled = self.art_detect_enable_checkbox.isChecked()
         info(f"Art detect enabled: {self.updater.art_detect_enabled}")
-    
+
     def capture_art_region(self):
         COLOR_ART_REGION = "#3235eb"
         SCREENSHOT_WINDOW_CONFIG = {
@@ -987,8 +1053,8 @@ class SettingsWindow(QWidget):
                 {'pos': (0.5, 0.5), 'size': 32, 'color': COLOR_ART_REGION, 'text': '点我并框出 绝招图标 的区域'},
             ],
             'control_buttons': {
-                'cancel':   {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
-                'save':     {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
+                'cancel': {'pos': (0.3, 0.5), 'size': 50, 'color': "#b3b3b3", 'text': '取消'},
+                'save': {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
         window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
@@ -1045,7 +1111,7 @@ class SettingsWindow(QWidget):
             self.art_region_label.setText(f"✔️已设置绝招图标区域: {self.art_region}")
 
     # =========================== Other =========================== #
-    
+
     def open_log_directory(self):
         log_dir = get_appdata_path("")
         os.startfile(log_dir)
@@ -1059,7 +1125,7 @@ class SettingsWindow(QWidget):
         msg.setText(about_text)
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
-    
+
     def open_bug_report_window(self):
         w = BugReportWindow(
             log_dir=get_appdata_path(""),
@@ -1073,4 +1139,3 @@ class SettingsWindow(QWidget):
         enabled = self.debug_log_checkbox.isChecked()
         set_log_level(INFO if not enabled else DEBUG)
         info(f"Debug log enabled: {enabled}")
-

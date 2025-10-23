@@ -1,25 +1,18 @@
-from PyQt6.QtCore import QObject, pyqtSignal
 import time
 from enum import Enum
+
 from PIL import Image
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from src.common import GAME_WINDOW_TITLE
 from src.config import Config
-from src.logger import info, warning, error
-from src.ui.input import InputWorker
-from src.ui.overlay import OverlayWidget, OverlayUIState
-from src.ui.map_overlay import MapOverlayWidget, MapOverlayUIState
-from src.ui.hp_overlay import HpOverlayWidget, HpOverlayUIState
-from src.detector import (
-    DetectorManager, 
-    DetectParam, 
-    DayDetectParam,
-    RainDetectParam,
-    MapDetectParam,
-    HpDetectParam,
-    ArtDetectParam,
-)
+from src.detector import (ArtDetectParam, DayDetectParam, DetectParam, DetectorManager, HpDetectParam, MapDetectParam, RainDetectParam)
 from src.detector.map_info import MapPattern
+from src.logger import error, info
+from src.ui.hp_overlay import HpOverlayUIState, HpOverlayWidget
+from src.ui.input import InputWorker
+from src.ui.map_overlay import MapOverlayUIState, MapOverlayWidget
+from src.ui.overlay import OverlayUIState, OverlayWidget
 from src.ui.utils import is_window_in_foreground
 
 
@@ -50,11 +43,11 @@ class Updater(QObject):
     input_block_signals_signal = pyqtSignal(bool)
 
     def __init__(
-        self, 
-        input: InputWorker,
-        overlay: OverlayWidget, 
-        map_overlay: MapOverlayWidget,
-        hp_overlay: HpOverlayWidget,
+            self,
+            input: InputWorker,
+            overlay: OverlayWidget,
+            map_overlay: MapOverlayWidget,
+            hp_overlay: HpOverlayWidget,
     ):
         super().__init__()
         self._running = False
@@ -76,7 +69,7 @@ class Updater(QObject):
         self.dayx_detect_enabled: bool = True
         self.day1_detect_region = None
         self.dayx_detect_lang: str = "chs"
-        
+
         self.in_rain_start_time: float = None
         self.in_rain_detect_enabled: bool = True
         self.hpcolor_detect_region: tuple[int] = None
@@ -87,11 +80,13 @@ class Updater(QObject):
         self.update_map_overlay_ui_state_signal.connect(self.map_overlay.update_ui_state)
         self.map_detect_enabled: bool = True
         self.map_region: tuple[int] = None
-        self.current_is_full_map: bool = False
         self.do_match_map_pattern_flag: DoMatchMapPatternFlag = DoMatchMapPatternFlag.TRUE
         self.map_pattern: MapPattern = None
-        self.map_overlay_visible: bool = False
         self.last_map_pattern_match_time: float = 0.0
+
+        # 手动选择模式的候选地图管理
+        self.manual_mode_candidates: list[tuple[MapPattern, Image.Image]] = []  # 候选地图列表 [(pattern, overlay_image), ...]
+        self.manual_mode_current_index: int = 0  # 当前显示的候选索引
 
         self.hp_overlay = hp_overlay
         self.hp_overlay_ui_state_signal.connect(self.hp_overlay.update_ui_state)
@@ -105,6 +100,9 @@ class Updater(QObject):
         self.art_region: tuple[int] = None
         self.art_type: str = None
 
+    @property
+    def current_map_overlay_visible(self) -> bool:
+        return self.map_overlay.target_opacity > 0
 
     def get_time(self) -> float:
         return time.time() * Config.get().time_scale
@@ -172,7 +170,7 @@ class Updater(QObject):
         if self.day is not None:
             text = f"DAY {'I' * self.day} - " + text
         return progress, text
-    
+
     def update_phase_timer(self):
         config = Config.get()
         if self.current_phase is not None:
@@ -291,7 +289,7 @@ class Updater(QObject):
             info("Update map overlay image.")
 
     def show_map_overlay(self):
-        if not self.map_overlay_visible:
+        if not self.current_map_overlay_visible:
             self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
                 opacity=1.0,
                 x=self.map_region[0],
@@ -299,19 +297,15 @@ class Updater(QObject):
                 w=self.map_region[2],
                 h=self.map_region[3],
             ))
-            self.map_overlay_visible = True
             info("Show map overlay.")
 
     def hide_map_overlay(self):
-        if self.map_overlay_visible:
-            self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(
-                opacity=0.0,
-            ))
-            self.map_overlay_visible = False
+        if self.current_map_overlay_visible:
+            self.update_map_overlay_ui_state_signal.emit(MapOverlayUIState(opacity=0.0))
             info("Hide map overlay.")
 
     def show_or_hide_map_overlay_by_shortcut(self):
-        if self.map_overlay_visible:
+        if self.current_map_overlay_visible:
             self.hide_map_overlay()
         else:
             self.show_map_overlay()
@@ -320,7 +314,7 @@ class Updater(QObject):
         if not self.map_detect_enabled:
             self.hide_map_overlay()
             return
-   
+
         param = DetectParam(
             map_detect_param=MapDetectParam(
                 map_region=self.map_region,
@@ -332,13 +326,9 @@ class Updater(QObject):
         is_full_map = result.map_detect_result.is_full_map
         map_img = result.map_detect_result.img
         if is_full_map is not None:
-            if is_full_map and not self.current_is_full_map:
-                info("Current map changed to full map.")
-                self.current_is_full_map = True
+            if is_full_map:
                 self.show_map_overlay()
-            if not is_full_map and self.current_is_full_map:
-                info("Current map changed to non-full map.")
-                self.current_is_full_map = False
+            else:
                 self.hide_map_overlay()
 
         self.update_overlay_match_map_pattern_text()
@@ -358,7 +348,7 @@ class Updater(QObject):
             result = self.detector.detect(DetectParam(
                 map_detect_param=MapDetectParam(
                     map_region=self.map_region,
-                    img=map_img,    # 使用之前截取的图片，避免处理过程中画面变化
+                    img=map_img,  # 使用之前截取的图片，避免处理过程中画面变化
                     do_match_earth_shifting=True,
                 )
             ))
@@ -390,6 +380,99 @@ class Updater(QObject):
                 self.update_map_overlay_image(result.map_detect_result.overlay_image)
                 self.last_map_pattern_match_time = self.get_time()
 
+    def manual_select_and_update_map(self, nightlord: int, earth_shifting: int):
+        """手动模式下根据选择的夜王和地形匹配地图
+
+        Args:
+            nightlord: 夜王ID (0-7)
+            earth_shifting: 地形ID (0:默认, 1:雪山, 2:火山, 3:腐败森林, 5:隐城)
+        """
+        try:
+            original_map_detect_enabled = self.map_detect_enabled
+            self.map_detect_enabled = False
+
+            # 进行匹配
+            self.do_match_map_pattern_flag = DoMatchMapPatternFlag.FALSE
+
+            # 获取所有候选地图
+            config = Config.get()
+            candidates = self.detector.map_detector.match_map_pattern_all_candidates(nightlord, earth_shifting)
+
+            # 计算绘制大小
+            if config.fixed_map_overlay_draw_size is not None:
+                draw_size = tuple(config.fixed_map_overlay_draw_size)
+            elif config.map_overlay_draw_size_ratio is not None:
+                draw_size = (
+                    int(self.map_region[2] * config.map_overlay_draw_size_ratio),
+                    int(self.map_region[3] * config.map_overlay_draw_size_ratio),
+                )
+            else:
+                from src.detector.map_detector import STD_MAP_SIZE
+                draw_size = STD_MAP_SIZE
+
+            # 为每个候选生成 overlay_image 并保存
+            self.manual_mode_candidates = []
+            for pattern in candidates:
+                overlay_image = self.detector.map_detector.draw_overlay_image(pattern, draw_size)
+                self.manual_mode_candidates.append((pattern, overlay_image))
+
+            # 重置索引并显示第一个候选
+            if self.manual_mode_candidates:
+                self.manual_mode_current_index = 0
+                first_pattern, first_overlay = self.manual_mode_candidates[0]
+                self.map_pattern = first_pattern
+                self.update_map_overlay_image(first_overlay)
+                self.show_map_overlay()
+                self.last_map_pattern_match_time = self.get_time()
+
+                # 显示候选数量信息
+                info(f"Manual mode: loaded {len(self.manual_mode_candidates)} candidates, showing 1/{len(self.manual_mode_candidates)}")
+                self.update_overlay_ui_state_signal.emit(OverlayUIState(
+                    map_pattern_match_text=f"候选: 1/{len(self.manual_mode_candidates)}",
+                ))
+            else:
+                info(f"Manual mode: no candidates found for nightlord={nightlord}, earth_shifting={earth_shifting}")
+
+            self.map_detect_enabled = original_map_detect_enabled
+        except Exception:
+            import traceback
+            error("Manual detect and update map error:\n" + traceback.format_exc())
+
+    def _switch_map_candidate(self, delta: int):
+        """切换候选地图的通用方法
+
+        Args:
+            delta: 索引变化量，+1 表示下一个，-1 表示上一个
+        """
+        if not self.manual_mode_candidates:
+            info("No candidates available to switch")
+            return
+
+        # 循环切换索引
+        self.manual_mode_current_index = (self.manual_mode_current_index + delta) % len(self.manual_mode_candidates)
+        pattern, overlay_image = self.manual_mode_candidates[self.manual_mode_current_index]
+
+        # 更新显示
+        self.map_pattern = pattern
+        self.update_map_overlay_image(overlay_image)
+        self.last_map_pattern_match_time = self.get_time()
+
+        # 更新提示文本
+        current = self.manual_mode_current_index + 1
+        total = len(self.manual_mode_candidates)
+        info(f"Manual mode: switched to candidate {current}/{total} (pattern #{pattern.id})")
+        self.update_overlay_ui_state_signal.emit(OverlayUIState(
+            map_pattern_match_text=f"候选: {current}/{total}",
+        ))
+
+    def switch_to_next_map_candidate(self):
+        """切换到下一个候选地图"""
+        self._switch_map_candidate(1)
+
+    def switch_to_prev_map_candidate(self):
+        """切换到上一个候选地图"""
+        self._switch_map_candidate(-1)
+
     # =============== HP Management =============== #
 
     def update_hp_length(self, length: int | None):
@@ -410,7 +493,7 @@ class Updater(QObject):
         if not self.hp_detect_enabled:
             self.update_hp_length(None)
             return
-        
+
         param = DetectParam(
             hp_detect_param=HpDetectParam(
                 hpbar_region=self.hpbar_region,
@@ -429,12 +512,12 @@ class Updater(QObject):
         config = Config.get()
         self.to_detect_art_time = self.get_time() + config.art_detect_delay_seconds
         info(f"Will detect art in {config.art_detect_delay_seconds} seconds.")
-    
+
     def detect_and_update_art(self):
         if not self.art_detect_enabled or \
-            self.to_detect_art_time is None or self.get_time() < self.to_detect_art_time:
+                self.to_detect_art_time is None or self.get_time() < self.to_detect_art_time:
             return
-        
+
         param = DetectParam(
             art_detect_param=ArtDetectParam(
                 art_region=self.art_region,
@@ -442,11 +525,11 @@ class Updater(QObject):
         )
         result = self.detector.detect(param)
         self.to_detect_art_time = None
-        
+
         if result.art_detect_result.art_type is None:
             info("No art detected.")
             return
-        
+
         info(f"detected art: {result.art_detect_result.art_type}")
         self.art_type = result.art_detect_result.art_type
         self.art_start_time = self.get_time()
@@ -454,7 +537,7 @@ class Updater(QObject):
     def get_art_progress_text_color(self) -> tuple[float, str, str]:
         if self.art_type is None or self.art_start_time is None:
             return 0.0, "", None
-        
+
         config = Config.get()
         info = config.art_info[self.art_type]
         delay = info.get("delay", 0)
@@ -467,11 +550,11 @@ class Updater(QObject):
             self.art_type = None
             self.art_start_time = None
             return 0.0, "", None
-        
+
         progress = 1.0 - t / duration
         text = f"{text} {format_period(int(max(duration - t, 0)))}"
         return progress, text, color
-        
+
     # =============== Main Loop =============== #
 
     def detect_and_update_all(self):
@@ -483,7 +566,7 @@ class Updater(QObject):
 
     def check_game_foreground(self) -> bool:
         is_foreground = is_window_in_foreground(GAME_WINDOW_TITLE)
-        
+
         self.update_overlay_ui_state_signal.emit(OverlayUIState(
             is_game_foreground=is_foreground,
         ))
@@ -495,8 +578,8 @@ class Updater(QObject):
         ))
 
         self.input_block_signals_signal.emit(self.only_detect_when_game_foreground and \
-            not (is_foreground or self.is_setting_opened or self.is_menu_opened))
-        
+                                             not (is_foreground or self.is_setting_opened or self.is_menu_opened))
+
         return is_foreground
 
     def run(self):
@@ -544,5 +627,3 @@ class Updater(QObject):
 
     def stop(self):
         self._running = False
-
-
