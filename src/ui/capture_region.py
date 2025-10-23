@@ -13,12 +13,15 @@ HANDLE_SIZE = 8  # 调整手柄的大小
 
 class ResizableRectItem:
     """管理一个可调整大小的矩形框"""
-    def __init__(self, rect, color, on_change):
+    def __init__(self, rect, color, on_change, force_square=False):
         self.rect = rect.normalized()
         self.color = color
         self.on_change_callback = on_change
+        self.force_square = force_square
         self.handles = {}
         self.handle_cursors = {}
+        # 用于保存拖动开始时的状态，避免累积误差
+        self.drag_start_rect = None
         self.update_handles()
 
     def update_handles(self):
@@ -68,23 +71,67 @@ class ResizableRectItem:
             return 'center', Qt.CursorShape.SizeAllCursor
         return None, Qt.CursorShape.ArrowCursor
 
+    def start_drag(self):
+        """开始拖动时保存初始状态"""
+        self.drag_start_rect = QRect(self.rect)
+
+    def end_drag(self):
+        """结束拖动时清除初始状态"""
+        self.drag_start_rect = None
+
     def update_geometry(self, press_pos: QPoint, current_pos: QPoint, handle_name: str):
         """根据拖动的手柄更新矩形几何信息"""
+        # 使用累积的移动量（相对于拖动开始时的位置），避免累积误差
         delta = current_pos - press_pos
-        
-        if handle_name == 'center':
-            self.rect.translate(delta)
-        elif 'top' in handle_name:
-            self.rect.setTop(self.rect.top() + delta.y())
-        elif 'bottom' in handle_name:
-            self.rect.setBottom(self.rect.bottom() + delta.y())
-        
-        if 'left' in handle_name:
-            self.rect.setLeft(self.rect.left() + delta.x())
-        elif 'right' in handle_name:
-            self.rect.setRight(self.rect.right() + delta.x())
 
-        self.rect = self.rect.normalized()
+        # 如果没有保存初始状态，使用当前状态（向后兼容）
+        if self.drag_start_rect is None:
+            start_rect = QRect(self.rect)
+        else:
+            start_rect = self.drag_start_rect
+
+        if handle_name == 'center':
+            # 移动整个矩形
+            self.rect = QRect(start_rect)
+            self.rect.translate(delta)
+        else:
+            # 调整矩形边界
+            self.rect = QRect(start_rect)
+
+            if 'top' in handle_name:
+                self.rect.setTop(start_rect.top() + delta.y())
+            elif 'bottom' in handle_name:
+                self.rect.setBottom(start_rect.bottom() + delta.y())
+
+            if 'left' in handle_name:
+                self.rect.setLeft(start_rect.left() + delta.x())
+            elif 'right' in handle_name:
+                self.rect.setRight(start_rect.right() + delta.x())
+
+            self.rect = self.rect.normalized()
+
+            # 如果需要强制正方形
+            if self.force_square:
+                # 取较大的边作为正方形边长
+                size = max(self.rect.width(), self.rect.height())
+                # 根据拖动的手柄确定固定点
+                if 'top' in handle_name and 'left' in handle_name:
+                    # 固定右下角
+                    self.rect.setLeft(self.rect.right() - size)
+                    self.rect.setTop(self.rect.bottom() - size)
+                elif 'top' in handle_name and 'right' in handle_name:
+                    # 固定左下角
+                    self.rect.setRight(self.rect.left() + size)
+                    self.rect.setTop(self.rect.bottom() - size)
+                elif 'bottom' in handle_name and 'left' in handle_name:
+                    # 固定右上角
+                    self.rect.setLeft(self.rect.right() - size)
+                    self.rect.setBottom(self.rect.top() + size)
+                elif 'bottom' in handle_name and 'right' in handle_name:
+                    # 固定左上角
+                    self.rect.setRight(self.rect.left() + size)
+                    self.rect.setBottom(self.rect.top() + size)
+
         self.update_handles()
         self.on_change_callback()
 
@@ -92,12 +139,13 @@ class ResizableRectItem:
 class CaptureRegionWindow(QDialog):
     """一个支持区域选择的截屏窗口"""
 
-    def __init__(self, config: dict, input: InputWorker, parent=None):
+    def __init__(self, config: dict, input: InputWorker, parent=None, force_square=False):
         super().__init__(parent)
         self.config = config
+        self.force_square = force_square
         input.key_combo_pressed.connect(self._process_key_combo)
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint 
+            Qt.WindowType.FramelessWindowHint
           | Qt.WindowType.WindowStaysOnTopHint
           | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -214,6 +262,18 @@ class CaptureRegionWindow(QDialog):
         # 4. 如果正在绘制新矩形，绘制它
         if self.is_drawing and self.start_pos and self.current_pos:
             drawing_rect = QRect(self.start_pos, self.current_pos).normalized()
+            # 如果需要强制正方形
+            if self.force_square:
+                size = max(drawing_rect.width(), drawing_rect.height())
+                # 保持起始点，调整终止点
+                if self.current_pos.x() >= self.start_pos.x():
+                    drawing_rect.setRight(drawing_rect.left() + size)
+                else:
+                    drawing_rect.setLeft(drawing_rect.right() - size)
+                if self.current_pos.y() >= self.start_pos.y():
+                    drawing_rect.setBottom(drawing_rect.top() + size)
+                else:
+                    drawing_rect.setTop(drawing_rect.bottom() - size)
             # 绘制明亮区域
             painter.drawPixmap(drawing_rect, self.screenshot_pixmap, scale_rect(drawing_rect))
             # 绘制边框
@@ -225,13 +285,14 @@ class CaptureRegionWindow(QDialog):
         if event.button() == Qt.MouseButton.LeftButton:
             self.setFocus()
             self.press_pos_for_drag = event.pos()
-            
+
             # 首先检查是否点击了现有矩形的手柄
             for item in reversed(self.rect_items):
                 handle, cursor = item.hit_test(event.pos())
                 if handle:
                     self.active_item = item
                     self.active_handle = handle
+                    self.active_item.start_drag()  # 开始拖动时保存初始状态
                     self.setCursor(cursor)
                     return
 
@@ -244,8 +305,8 @@ class CaptureRegionWindow(QDialog):
     def mouseMoveEvent(self, event):
         # 如果正在操作现有矩形
         if self.active_item and self.active_handle:
+            # 使用拖动开始时的位置和当前位置，计算累积的移动量
             self.active_item.update_geometry(self.press_pos_for_drag, event.pos(), self.active_handle)
-            self.press_pos_for_drag = event.pos() # 更新拖动起始点
             return
 
         # 如果正在绘制新矩形
@@ -267,6 +328,7 @@ class CaptureRegionWindow(QDialog):
         if event.button() == Qt.MouseButton.LeftButton:
             # 结束操作现有矩形
             if self.active_item:
+                self.active_item.end_drag()  # 清除保存的初始状态
                 self.active_item = None
                 self.active_handle = None
                 self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -274,10 +336,22 @@ class CaptureRegionWindow(QDialog):
             # 结束绘制新矩形
             elif self.is_drawing and self.start_pos:
                 final_rect = QRect(self.start_pos, event.pos()).normalized()
+                # 如果需要强制正方形
+                if self.force_square:
+                    size = max(final_rect.width(), final_rect.height())
+                    # 保持起始点，调整终止点
+                    if event.pos().x() >= self.start_pos.x():
+                        final_rect.setRight(final_rect.left() + size)
+                    else:
+                        final_rect.setLeft(final_rect.right() - size)
+                    if event.pos().y() >= self.start_pos.y():
+                        final_rect.setBottom(final_rect.top() + size)
+                    else:
+                        final_rect.setTop(final_rect.bottom() - size)
                 if final_rect.width() > 5 and final_rect.height() > 5:
-                    new_item = ResizableRectItem(final_rect, QColor(self.current_color), self.update)
+                    new_item = ResizableRectItem(final_rect, QColor(self.current_color), self.update, self.force_square)
                     self.rect_items.append(new_item)
-                
+
                 self.is_drawing = False
                 self.start_pos = None
                 self.current_pos = None

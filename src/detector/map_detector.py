@@ -1,36 +1,27 @@
+import time
+from dataclasses import dataclass
+
 import cv2
 import numpy as np
-from dataclasses import dataclass
 from PIL import Image
-import time
 from mss.base import MSSBase
 
-from src.config import Config
-from src.logger import info, warning, error, debug
 from src.common import get_appdata_path, get_data_path
-from src.detector.map_info import (
-    load_map_info, 
-    STD_MAP_SIZE, 
-    Position,
-    MapPattern,
-    Construct,
-)
-from src.detector.utils import (
-    paste_cv2,
-    draw_icon,
-    draw_text,
-    grab_region,
-)
-
+from src.config import Config
+from src.detector.map_info import (Construct, MapPattern, Position, STD_MAP_SIZE, load_map_info)
+from src.detector.utils import (draw_icon, draw_text, grab_region, paste_cv2)
+from src.logger import debug, info
 
 CV2_RESIZE_METHOD = cv2.INTER_CUBIC
 PIL_RESAMPLE_METHOD = Image.Resampling.BICUBIC
+
 
 def open_pil_image(path: str, size: tuple[int, int] | None = None) -> Image.Image:
     image = Image.open(get_data_path(path)).convert("RGBA")
     if size is not None:
         image = image.resize(size, resample=PIL_RESAMPLE_METHOD)
     return image
+
 
 def open_cv2_image(path: str, size: tuple[int, int] | None = None) -> np.ndarray:
     image = cv2.cvtColor(cv2.imread(get_data_path(path)), cv2.COLOR_BGR2RGB)
@@ -50,10 +41,10 @@ PREDICT_EARTH_SHIFTING_SIZE_REGION = (
 )
 PREDICT_EARTH_SHIFTING_OFFSET_AND_STRIDE = (5, 1)
 PREDICT_EARTH_SHIFTING_SCALES = (0.95, 1.05, 7)
-MAP_BGS = { i : open_cv2_image(f"maps/{i}.jpg") for i in range(6) if i != 4 }
+MAP_BGS = {i: open_cv2_image(f"maps/{i}.jpg") for i in range(6) if i != 4}
 
-POI_ICON_SCALE = { 30: 0.35, 32: 0.5, 34: 0.4, 37: 0.4, 38: 0.3, 40: 0.4, 41: 0.38, }
-POI_ICONS = { ctype: open_pil_image(f"icons/construct/{ctype}.png") for ctype in POI_ICON_SCALE.keys() }
+POI_ICON_SCALE = {30: 0.35, 32: 0.5, 34: 0.4, 37: 0.4, 38: 0.3, 40: 0.4, 41: 0.38, }
+POI_ICONS = {ctype: open_pil_image(f"icons/construct/{ctype}.png") for ctype in POI_ICON_SCALE.keys()}
 STD_POI_SIZE = (45, 45)
 ATTRIBUTE_ICONS = [open_pil_image(f"icons/attribute/{i}.png") for i in range(4)]
 CONDITION_ICONS = [open_pil_image(f"icons/condition/{i}.png") for i in range(7)]
@@ -86,6 +77,8 @@ class MapDetectParam:
     do_match_full_map: bool = False
     do_match_earth_shifting: bool = False
     do_match_pattern: bool = False
+    # 手动限定候选范围：(夜王ID)
+    manual_constraint: tuple[int] | None = None
 
 
 @dataclass
@@ -99,7 +92,7 @@ class MapDetectResult:
     overlay_image: Image.Image = None
 
 
-class MapDetector:  
+class MapDetector:
     def __init__(self):
         # 地图信息
         self.info = load_map_info(
@@ -116,7 +109,7 @@ class MapDetector:
             same_image_ct = None
             for ct in self.all_unique_poi_image_ctype:
                 if ctype // 1000 == ct // 1000 \
-                    and POI_SUBICON_MAP.get(ctype) == POI_SUBICON_MAP.get(ct):
+                        and POI_SUBICON_MAP.get(ctype) == POI_SUBICON_MAP.get(ct):
                     same_image_ct = ct
                     break
             if same_image_ct is None:
@@ -125,23 +118,22 @@ class MapDetector:
                 self.all_poi_images[ctype] = self.all_unique_poi_images[ctype]
             else:
                 self.all_poi_images[ctype] = self.all_unique_poi_images[same_image_ct]
-        
 
     def _match_full_map(self, img: np.ndarray) -> float:
         config = Config.get()
-        img = img[-int(img.shape[0]*0.22):, :int(img.shape[1]*0.22)]
+        img = img[-int(img.shape[0] * 0.22):, :int(img.shape[1] * 0.22)]
         img = cv2.resize(img, CHECK_FULL_MAP_STD_SIZE, interpolation=CV2_RESIZE_METHOD)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         circles = []
         for thres in config.full_map_hough_circle_thres:
             res = cv2.HoughCircles(
-                gray, 
-                cv2.HOUGH_GRADIENT, 
-                dp=1, 
+                gray,
+                cv2.HOUGH_GRADIENT,
+                dp=1,
                 minDist=20,
                 param1=thres,
-                param2=30, 
-                minRadius=int(img.shape[0] * 0.4), 
+                param2=30,
+                minRadius=int(img.shape[0] * 0.4),
                 maxRadius=int(img.shape[0] * 0.5)
             )
             if res is not None:
@@ -155,12 +147,12 @@ class MapDetector:
             error = abs(cr - img.shape[0] * 0.425) ** 2
         debug(f"MapDetector: Full map match error: {error:.4f}")
         return error
-    
+
     def _match_earth_shifting(self, img: np.ndarray) -> tuple[int, float]:
         t = time.time()
         img = cv2.resize(img, PREDICT_EARTH_SHIFTING_SIZE, interpolation=CV2_RESIZE_METHOD)
         x, y, w, h = PREDICT_EARTH_SHIFTING_SIZE_REGION
-        img = img[y:y+h, x:x+w].astype(int)
+        img = img[y:y + h, x:x + w].astype(int)
         best_map_id, best_score = None, float('inf')
         offset, stride = PREDICT_EARTH_SHIFTING_OFFSET_AND_STRIDE
         min_scale, max_scale, scale_num = PREDICT_EARTH_SHIFTING_SCALES
@@ -169,9 +161,9 @@ class MapDetector:
             for scale in np.linspace(min_scale, max_scale, scale_num, endpoint=True):
                 size = (int(PREDICT_EARTH_SHIFTING_SIZE[0] * scale), int(PREDICT_EARTH_SHIFTING_SIZE[1] * scale))
                 map_resized = cv2.resize(map_img, size, interpolation=CV2_RESIZE_METHOD).astype(int)
-                for dx in range(-offset, offset+1, stride):
-                    for dy in range(-offset, offset+1, stride):
-                        map_shifted = map_resized[y+dy:y+h+dy, x+dx:x+w+dx]
+                for dx in range(-offset, offset + 1, stride):
+                    for dy in range(-offset, offset + 1, stride):
+                        map_shifted = map_resized[y + dy:y + h + dy, x + dx:x + w + dx]
                         diff = np.abs((img - map_shifted))
                         diff[diff > 100] = 0
                         diff = np.linalg.norm(diff, axis=2)
@@ -183,7 +175,7 @@ class MapDetector:
                 best_map_id = map_id
         info(f"MapDetector: Match earth shifting: best map {best_map_id} score {best_score:.4f}, time cost: {time.time() - t:.4f}s")
         return best_map_id, best_score
-    
+
     def _get_poi_image(self, construct_type: int) -> Image.Image:
         x, y = STD_POI_SIZE[0] // 2, STD_POI_SIZE[1] // 2
         img = Image.new("RGBA", STD_POI_SIZE, (0, 0, 0, 0))
@@ -200,7 +192,7 @@ class MapDetector:
             if construct_type in POI_SUBICON_MAP:
                 subicon = POI_SUBICON_MAP[construct_type]
                 subicon_size = (
-                    int(STD_MAP_SIZE[0] * 0.0185), 
+                    int(STD_MAP_SIZE[0] * 0.0185),
                     int(STD_MAP_SIZE[1] * 0.0185),
                 )
                 subicon = subicon.resize(subicon_size, resample=PIL_RESAMPLE_METHOD)
@@ -210,15 +202,15 @@ class MapDetector:
                 )
                 img.alpha_composite(subicon, subicon_pos)
         return img
-    
+
     def _match_poi(self, map_img: np.ndarray, map_bg: np.ndarray, pos: Position) -> tuple[int, float]:
         img = map_img[
-            pos[1]-STD_POI_SIZE[1]//2:pos[1]-STD_POI_SIZE[1]//2+STD_POI_SIZE[1],
-            pos[0]-STD_POI_SIZE[0]//2:pos[0]-STD_POI_SIZE[1]//2+STD_POI_SIZE[0],
+            pos[1] - STD_POI_SIZE[1] // 2:pos[1] - STD_POI_SIZE[1] // 2 + STD_POI_SIZE[1],
+            pos[0] - STD_POI_SIZE[0] // 2:pos[0] - STD_POI_SIZE[1] // 2 + STD_POI_SIZE[0],
         ]
         bg = map_bg[
-            pos[1]-STD_POI_SIZE[1]//2:pos[1]-STD_POI_SIZE[1]//2+STD_POI_SIZE[1],
-            pos[0]-STD_POI_SIZE[0]//2:pos[0]-STD_POI_SIZE[1]//2+STD_POI_SIZE[0],
+            pos[1] - STD_POI_SIZE[1] // 2:pos[1] - STD_POI_SIZE[1] // 2 + STD_POI_SIZE[1],
+            pos[0] - STD_POI_SIZE[0] // 2:pos[0] - STD_POI_SIZE[1] // 2 + STD_POI_SIZE[0],
         ]
 
         DOWNSAMPLE_SIZE = (16, 16)
@@ -233,8 +225,8 @@ class MapDetector:
         best_score = float('inf')
         for ctype, poi_img in self.all_unique_poi_images.items():
             ctype_score = float('inf')
-            for dx in range(-MAX_OFFSET, MAX_OFFSET+1, OFFSET_STRIDE):
-                for dy in range(-MAX_OFFSET, MAX_OFFSET+1, OFFSET_STRIDE):
+            for dx in range(-MAX_OFFSET, MAX_OFFSET + 1, OFFSET_STRIDE):
+                for dy in range(-MAX_OFFSET, MAX_OFFSET + 1, OFFSET_STRIDE):
                     img2 = bg.copy()
                     img2.alpha_composite(poi_img, (dx, dy))
                     img2 = cv2.cvtColor(np.array(img2), cv2.COLOR_RGBA2RGB)
@@ -252,7 +244,7 @@ class MapDetector:
         # t.print()
         return best_ctype, best_score
 
-    def _match_map_pattern(self, img: np.ndarray, earth_shifting: int) -> tuple[MapPattern, int]:
+    def _match_map_pattern(self, img: np.ndarray, earth_shifting: int, manual_constraint: tuple[int] | None = None) -> tuple[MapPattern, int]:
         assert earth_shifting is not None, "earth_shifing should be provided when matching map pattern"
 
         t = time.time()
@@ -261,12 +253,12 @@ class MapDetector:
         # 识别POI
         map_bg = cv2.resize(MAP_BGS[earth_shifting], STD_MAP_SIZE, interpolation=CV2_RESIZE_METHOD)
         poi_result: dict[Position, int] = {}
-        poi_result_img = img.copy()    # for debug
+        poi_result_img = img.copy()  # for debug
 
         for x, y in sorted(self.info.all_poi_pos):
             ctype, score = self._match_poi(img, map_bg, (x, y))
             poi_result[(x, y)] = ctype
-            paste_cv2(poi_result_img, np.array(self.all_unique_poi_images[ctype])[..., :3], (x-STD_POI_SIZE[0]//2, y-STD_POI_SIZE[1]//2))
+            paste_cv2(poi_result_img, np.array(self.all_unique_poi_images[ctype])[..., :3], (x - STD_POI_SIZE[0] // 2, y - STD_POI_SIZE[1] // 2))
             # info(f"pos {x},{y} match construct {ctype} with score {score:.4f}")
 
         # 保存结果用于调试
@@ -280,27 +272,29 @@ class MapDetector:
         for pattern in self.info.patterns:
             if pattern.earth_shifting != earth_shifting:
                 continue
+            if manual_constraint is not None and pattern.nightlord != manual_constraint[0]:
+                continue
             score, error = 0, 0
             for pos, ctype in poi_result.items():
                 expect_ctype = pattern.pos_constructions.get(pos, EMPTY_CONSTRUCTION).type
                 subicon = POI_SUBICON_MAP.get(ctype)
                 expect_subicon = POI_SUBICON_MAP.get(expect_ctype)
-                if ctype // 1000 != expect_ctype // 1000:   # 建筑类型不符合
+                if ctype // 1000 != expect_ctype // 1000:  # 建筑类型不符合
                     if subicon == expect_subicon:
-                        score += 1      # 子图标符合
+                        score += 1  # 子图标符合
                         error += 3
                     else:
                         score += 0
                         error += 10
                 else:
                     if subicon == expect_subicon:
-                        score += 10     # 完全符合 
+                        score += 10  # 完全符合
                         error += 0
                     elif subicon or expect_subicon:
                         score += 0  # 一个有子图标一个没有
                         error += 10
                     else:
-                        score += 3      # 子图标不符合
+                        score += 3  # 子图标不符合
                         error += 1
 
             # info(f"pattern {pattern.id} match score: {score} error: {error}")
@@ -318,6 +312,23 @@ class MapDetector:
         info(f"Match map pattern: return pattern #{best_pattern.id}, time cost: {time.time() - t:.4f}s")
         return best_pattern, best_score
 
+    def _match_map_pattern_all_candidates(self, earth_shifting: int, manual_constraint: tuple[int] | None = None) -> list[MapPattern]:
+        """
+        获取所有符合条件的候选地图（用于手动选择模式）
+        """
+        assert earth_shifting is not None, "earth_shifing should be provided when matching map pattern"
+
+        candidates: list[MapPattern] = []
+        for pattern in self.info.patterns:
+            if pattern.earth_shifting != earth_shifting:
+                continue
+            if manual_constraint is not None and pattern.nightlord != manual_constraint[0]:
+                continue
+            candidates.append(pattern)
+
+        candidates.sort(key=lambda p: p.id)
+
+        return candidates
 
     def _draw_overlay_image(self, pattern: MapPattern, draw_size: tuple[int, int]) -> Image.Image:
         def scale_size(p: int | float | Position) -> int | Position:
@@ -351,7 +362,7 @@ class MapDetector:
         BOSS1_CTYPES = [
             46510, 46570, 46590, 46620, 46650, 46690,
             46710, 46720, 46770, 46810, 46820, 46860,
-            46880, 46910, 46950, 45510, 46550, 
+            46880, 46910, 46950, 45510, 46550,
         ]
         BOSS2_CTYPES = [
             46520, 46530, 46540, 46560, 46630, 46640,
@@ -388,7 +399,7 @@ class MapDetector:
         extra_name = get_name(pattern.day1_extra_boss) if pattern.day1_extra_boss != -1 else None
         icons.append(((x, y), NIGHT_CIRCLE_ICON))
         texts.append(((x, y + scale_size(40)), f"Day1 {name}", FONT_SIZE_LARGE, (210, 210, 255, 255), OUTLINE_W_LARGE, OUTLINE_COLOR))
-        if extra_name: texts.append(((x, y + scale_size(60)), f"额外Boss:{extra_name}", 
+        if extra_name: texts.append(((x, y + scale_size(60)), f"额外Boss:{extra_name}",
                                      FONT_SIZE_LARGE, (255, 255, 255, 255), OUTLINE_W_LARGE, OUTLINE_COLOR))
 
         # day2 boss
@@ -397,7 +408,7 @@ class MapDetector:
         extra_name = get_name(pattern.day2_extra_boss) if pattern.day2_extra_boss != -1 else None
         icons.append(((x, y), NIGHT_CIRCLE_ICON))
         texts.append(((x, y + scale_size(40)), f"Day2 {name}", FONT_SIZE_LARGE, (210, 210, 255, 255), OUTLINE_W_LARGE, OUTLINE_COLOR))
-        if extra_name: texts.append(((x, y + scale_size(60)), f"额外Boss:{extra_name}", 
+        if extra_name: texts.append(((x, y + scale_size(60)), f"额外Boss:{extra_name}",
                                      FONT_SIZE_LARGE, (255, 255, 255, 255), OUTLINE_W_LARGE, OUTLINE_COLOR))
 
         for pos, construct in pattern.pos_constructions.items():
@@ -407,15 +418,15 @@ class MapDetector:
             # boss
             if ctype // 1000 in (45, 46) and ctype // 100 != 460 and (ctype == 45510 or ctype // 1000 != 45) and ctype not in (46780,):
                 name = get_name(ctype)
-                if pos == MAIN_CASTLE_UPPERFLOOR_POS:   
+                if pos == MAIN_CASTLE_UPPERFLOOR_POS:
                     y -= scale_size(10)
                     x += scale_size(13)
                     name = '楼顶:' + name
-                elif pos == MAIN_CASTLE_BASEMENT_POS:   
+                elif pos == MAIN_CASTLE_BASEMENT_POS:
                     y += scale_size(10)
                     x -= scale_size(13)
                     name = '地下室:' + name
-                else: 
+                else:
                     y += scale_size(15)
                     if ctype in BOSS1_CTYPES:
                         icons.append(((x, y - scale_size(20)), BOSS1_ICON))
@@ -434,8 +445,9 @@ class MapDetector:
             # 马车
             if ctype // 10 in (4500, 4501):
                 icons.append(((x, y), CARRIAGE_ICON))
-            # POI
-            if ctype // 1000 in (30, 32, 34, 38):
+            # POI (30:要塞, 32:营地, 34:遗迹, 37:村庄, 38:大教堂, 41:小教堂)
+            poi_types = (30, 32, 34, 37, 38, 41)
+            if ctype // 1000 in poi_types:
                 y += scale_size(15)
                 texts.append(((x, y), get_name(ctype), FONT_SIZE_SMALL, (200, 220, 150, 255), OUTLINE_W_SMALL, OUTLINE_COLOR))
             # 特殊事件（癫火塔除外）
@@ -443,7 +455,6 @@ class MapDetector:
                 icons.append(((x, y), EVENT_ICON))
                 y += scale_size(15)
                 texts.append(((x, y), get_event_text(pattern), FONT_SIZE_SMALL, (255, 200, 200, 255), OUTLINE_W_SMALL, OUTLINE_COLOR))
-            
 
         # 宝藏
         treasure_id = pattern.treasure * 10 + pattern.earth_shifting
@@ -481,7 +492,7 @@ class MapDetector:
         ret = MapDetectResult()
         if param is None or param.map_region is None:
             return ret
-        
+
         if param.img is None:
             img = grab_region(sct, param.map_region)
             img = np.array(img)
@@ -504,7 +515,7 @@ class MapDetector:
 
         # 地图模式匹配
         if param.do_match_pattern:
-            pattern, score = self._match_map_pattern(img, param.earth_shifting)
+            pattern, score = self._match_map_pattern(img, param.earth_shifting, param.manual_constraint)
             ret.pattern = pattern
             ret.pattern_score = score
 
@@ -519,7 +530,5 @@ class MapDetector:
             else:
                 draw_size = STD_MAP_SIZE
             ret.overlay_image = self._draw_overlay_image(pattern, draw_size)
-        
+
         return ret
-
-
