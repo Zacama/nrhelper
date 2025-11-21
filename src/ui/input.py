@@ -434,3 +434,13 @@ class InputSettingWidget(QWidget):
     def process_joystick_combo(self, buttons: tuple):
         if self._setting_type == 'joystick' and buttons == self._setting_combo:
             self.input_triggered.emit()
+
+    def closeEvent(self, event):
+        """在控件销毁前断开信号连接，防止内存泄漏"""
+        try:
+            self.worker.key_combo_pressed.disconnect(self.process_key_combo)
+            self.worker.joystick_combo_pressed.disconnect(self.process_joystick_combo)
+        except (TypeError, RuntimeError):
+            # 信号可能已经断开或对象已被销毁
+            pass
+        super().closeEvent(event)
