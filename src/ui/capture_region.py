@@ -143,6 +143,7 @@ class CaptureRegionWindow(QDialog):
         super().__init__(parent)
         self.config = config
         self.force_square = force_square
+        self.input = input  # 保存 input 引用以便在 closeEvent 中使用
         input.key_combo_pressed.connect(self._process_key_combo)
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -399,6 +400,15 @@ class CaptureRegionWindow(QDialog):
     def _cancel(self):
         self.result = None
         self.close()
+
+    def closeEvent(self, event):
+        """在关闭窗口时断开信号连接，防止内存泄漏"""
+        try:
+            self.input.key_combo_pressed.disconnect(self._process_key_combo)
+        except (TypeError, RuntimeError, AttributeError):
+            # 信号可能已经断开或对象已被销毁
+            pass
+        super().closeEvent(event)
 
 
 

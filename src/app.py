@@ -159,5 +159,7 @@ if __name__ == "__main__":
 
     settings_window.save_settings()
 
-    time.sleep(1)
-    os._exit(exit_code)
+    # 使用 sys.exit() 而不是 os._exit() 以确保正常清理资源
+    # time.sleep 给线程一点时间完成清理
+    time.sleep(0.5)
+    sys.exit(exit_code)
