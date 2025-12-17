@@ -1,14 +1,16 @@
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QEvent
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, 
+    QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QSlider, QGroupBox, QCheckBox, QPushButton,
-    QMessageBox, QApplication, QFrame, QComboBox, QToolTip,
+    QMessageBox, QApplication, QFrame, QComboBox, QToolTip, QDialog
 )
 from PyQt6.QtGui import QPixmap, QIcon, QMouseEvent, QEnterEvent
 import yaml
 from dataclasses import dataclass, asdict
 import os
 import ctypes
+import os
+from dataclasses import asdict
 
 from src.updater import Updater
 from src.common import (
@@ -18,15 +20,17 @@ from src.common import (
 )
 from src.logger import info, warning, error, set_log_level, INFO, DEBUG
 from src.config import Config
-from src.ui.overlay import OverlayUIState, OverlayWidget
-from src.ui.map_overlay import MapOverlayWidget, MapOverlayUIState
-from src.ui.input import InputWorker, InputSettingWidget, InputSetting
-from src.ui.capture_region import CaptureRegionWindow
 from src.detector.rain_detector import RainDetector
 from src.detector.utils import hls_to_rgb
+from src.logger import DEBUG, INFO, error, info, set_log_level, warning
 from src.ui.bug_report import BugReportWindow
-from src.ui.utils import process_region_to_adapt_scale, get_qt_screen_by_mss_region
-
+from src.ui.capture_region import CaptureRegionWindow
+from src.ui.input import InputSetting, InputSettingWidget, InputWorker
+from src.ui.map_overlay import MapOverlayUIState, MapOverlayWidget
+from src.ui.nightlord_selector import EARTH_SHIFTING_NAMES, NIGHTLORD_NAMES, NightlordSelectorDialog
+from src.ui.overlay import OverlayUIState, OverlayWidget
+from src.ui.utils import get_qt_screen_by_mss_region, process_region_to_adapt_scale
+from src.updater import Updater
 
 BUTTON_STYLE = "padding: 4px; min-height: 20px;"
 
@@ -308,6 +312,31 @@ class SettingsWindow(QWidget):
         set_to_detect_map_input_setting_layout.addWidget(self.set_to_detect_map_input_setting_widget)
         self.map_detect_layout.addLayout(set_to_detect_map_input_setting_layout)
 
+        manual_select_nightlord_input_setting_layout = QHBoxLayout()
+        manual_select_nightlord_input_setting_layout.addWidget(QLabel("手动选择夜王快捷键"))
+        self.manual_select_nightlord_input_setting_widget = InputSettingWidget(self.input)
+        self.manual_select_nightlord_input_setting_widget.input_triggered.connect(self.open_nightlord_selector)
+        manual_select_nightlord_input_setting_layout.addWidget(self.manual_select_nightlord_input_setting_widget)
+        self.map_detect_layout.addLayout(manual_select_nightlord_input_setting_layout)
+
+        self.manual_constraint_label = QLabel("手动限定范围：未设置")
+        self.map_detect_layout.addWidget(self.manual_constraint_label)
+
+        # 切换候选地图的快捷键
+        prev_candidate_input_setting_layout = QHBoxLayout()
+        prev_candidate_input_setting_layout.addWidget(QLabel("上一个候选地图快捷键"))
+        self.prev_candidate_input_setting_widget = InputSettingWidget(self.input)
+        self.prev_candidate_input_setting_widget.input_triggered.connect(self.switch_to_prev_candidate)
+        prev_candidate_input_setting_layout.addWidget(self.prev_candidate_input_setting_widget)
+        self.map_detect_layout.addLayout(prev_candidate_input_setting_layout)
+
+        next_candidate_input_setting_layout = QHBoxLayout()
+        next_candidate_input_setting_layout.addWidget(QLabel("下一个候选地图快捷键"))
+        self.next_candidate_input_setting_widget = InputSettingWidget(self.input)
+        self.next_candidate_input_setting_widget.input_triggered.connect(self.switch_to_next_candidate)
+        next_candidate_input_setting_layout.addWidget(self.next_candidate_input_setting_widget)
+        self.map_detect_layout.addLayout(next_candidate_input_setting_layout)
+
         show_map_overlay_input_setting_layout = QHBoxLayout()
         show_map_overlay_input_setting_layout.addWidget(QLabel("显示/隐藏信息快捷键"))
         self.show_map_overlay_input_setting_widget = InputSettingWidget(self.input)
@@ -542,6 +571,9 @@ class SettingsWindow(QWidget):
             self.map_region = data.get("map_region", None)
             self.update_map_region()
             self.set_to_detect_map_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("set_to_detect_map_input_setting")))
+            self.manual_select_nightlord_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("manual_select_nightlord_input_setting")))
+            self.prev_candidate_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("prev_candidate_input_setting")))
+            self.next_candidate_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("next_candidate_input_setting")))
             self.show_map_overlay_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("show_map_overlay_input_setting")))
             self.crystal_layout_next_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("next_crystal_layout_input_setting")))
             self.crystal_layout_last_input_setting_widget.set_setting(InputSetting.load_from_dict(data.get("last_crystal_layout_input_setting")))
@@ -601,6 +633,9 @@ class SettingsWindow(QWidget):
                 "capture_map_region_input_setting": asdict(self.capture_map_region_input_widget.get_setting()),
                 "map_region": self.map_region,
                 "set_to_detect_map_input_setting": asdict(self.set_to_detect_map_input_setting_widget.get_setting()),
+                "manual_select_nightlord_input_setting": asdict(self.manual_select_nightlord_input_setting_widget.get_setting()),
+                "prev_candidate_input_setting": asdict(self.prev_candidate_input_setting_widget.get_setting()),
+                "next_candidate_input_setting": asdict(self.next_candidate_input_setting_widget.get_setting()),
                 "show_map_overlay_input_setting": asdict(self.show_map_overlay_input_setting_widget.get_setting()),
                 "next_crystal_layout_input_setting": asdict(self.crystal_layout_next_input_setting_widget.get_setting()),
                 "last_crystal_layout_input_setting": asdict(self.crystal_layout_last_input_setting_widget.get_setting()),
@@ -972,7 +1007,7 @@ class SettingsWindow(QWidget):
                 'save':     {'pos': (0.3, 0.6), 'size': 50, 'color': "#ffffff", 'text': '保存'},
             }
         }
-        window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input)
+        window = CaptureRegionWindow(SCREENSHOT_WINDOW_CONFIG, self.input, force_square=True)
         region_result = window.capture_and_show()
         if region_result is None:
             warning("Map region setting canceled")
@@ -1005,6 +1040,49 @@ class SettingsWindow(QWidget):
             self.map_region_label.setText("❌未设置地图区域")
         else:
             self.map_region_label.setText(f"✔️已设置地图区域: {map_region}")
+
+    def open_nightlord_selector(self):
+        """打开夜王和地形选择对话框"""
+        if self.map_region is None:
+            QMessageBox.warning(
+                self,
+                "未设置地图区域",
+                "请先在设置中截取地图区域后再使用此功能。",
+                QMessageBox.StandardButton.Ok
+            )
+            return
+
+        dialog = NightlordSelectorDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            selection = dialog.get_selection()
+            if selection:
+                self.updater.manual_select_and_update_map(
+                    selection.nightlord,
+                    selection.earth_shifting
+                )  # 触发一次识别
+                self.update_manual_constraint_label(selection.nightlord, selection.earth_shifting)
+                info(f"Manual map constraint set: Nightlord={selection.nightlord}, EarthShifting={selection.earth_shifting}")
+            else:
+                warning("Nightlord selection returned without valid data")
+        else:
+            info("Nightlord selection canceled")
+
+    def update_manual_constraint_label(self, nightlord: int | None, earth_shifting: int | None = None):
+        """更新手动限定范围的标签显示"""
+        if nightlord is None:
+            self.manual_constraint_label.setText("手动限定范围：未设置")
+        else:
+            nightlord_name = NIGHTLORD_NAMES.get(nightlord, f"未知({nightlord})")
+            earth_shifting_name = EARTH_SHIFTING_NAMES.get(earth_shifting, f"未知({earth_shifting})") if earth_shifting is not None else "未设置"
+            self.manual_constraint_label.setText(f"✔️手动限定：夜王={nightlord_name}, 地形={earth_shifting_name}")
+
+    def switch_to_next_candidate(self):
+        """切换到下一个候选地图"""
+        self.updater.switch_to_next_map_candidate()
+
+    def switch_to_prev_candidate(self):
+        """切换到上一个候选地图"""
+        self.updater.switch_to_prev_map_candidate()
 
     # =========================== Performance =========================== #
 

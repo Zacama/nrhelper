@@ -1,5 +1,9 @@
 # Nightreign Overlay Helper
 
+增加了可手动选择野王地形，手动切换地图的功能
+
+以下是原仓库的README内容
+
 [中文README](#黑夜君临悬浮助手)
 
 Nightreign Overlay Helper is a utility program developed with PyQt6, designed to display various useful information and features while playing the game, **currently supporting only the Chinese language**.

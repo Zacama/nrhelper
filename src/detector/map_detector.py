@@ -1,3 +1,6 @@
+import time
+from dataclasses import dataclass
+
 import cv2
 import os
 import numpy as np
@@ -222,6 +225,9 @@ class MapDetectParam:
     do_match_earth_shifting: bool = False
     do_match_pattern: bool = False
     hdr_processing_enabled: bool = False
+    # 手动限定候选范围：(夜王ID)
+    manual_constraint: tuple[int] | None = None
+
 
 @dataclass
 class MapDetectResult:
@@ -517,7 +523,7 @@ class MapDetector:
         best_ctype = sorted(list(self.poi_cate_info[best_poi_key].subtypes.get(best_subicon).ctypes))[0]
         return best_ctype, best_poi_key_score * best_subicon_score
 
-    def _match_map_pattern(self, img: np.ndarray, earth_shifting: int) -> tuple[MapPattern | None, int]:
+    def _match_map_pattern(self, img: np.ndarray, earth_shifting: int, manual_constraint: tuple[int] | None = None) -> tuple[MapPattern | None, int]:
         assert earth_shifting is not None, "earth_shifing should be provided when matching map pattern"
 
         t = time.time()
@@ -559,6 +565,8 @@ class MapDetector:
         best_patterns_by_error, best_error = None, 1e9
         for pattern in self.info.patterns:
             if pattern.earth_shifting != earth_shifting:
+                continue
+            if manual_constraint is not None and pattern.nightlord != manual_constraint[0]:
                 continue
             if nightlord is not None and pattern.nightlord != nightlord:
                 continue
@@ -605,6 +613,21 @@ class MapDetector:
         info(f"Match map pattern: return pattern #{best_pattern.id}, time cost: {time.time() - t:.4f}s")
         return best_pattern, best_score
 
+    def match_map_pattern_all_candidates(self, nightlord: int, earth_shifting: int) -> list[MapPattern]:
+        """
+        获取所有符合条件的候选地图（用于手动选择模式）
+        """
+        assert nightlord is not None, "nightlord should be provided when match_map_pattern_all_candidates"
+        assert earth_shifting is not None, "earth_shifting should be provided when match_map_pattern_all_candidates"
+
+        candidates: list[MapPattern] = []
+        for pattern in self.info.patterns:
+            if pattern.nightlord == nightlord and pattern.earth_shifting == earth_shifting:
+                candidates.append(pattern)
+
+        candidates.sort(key=lambda p: p.id)
+
+        return candidates
 
     def _draw_overlay_image(self, pattern: MapPattern | None, draw_size: tuple[int, int]) -> Image.Image:
         def scale_size(p: int | float | Position) -> int | Position:
@@ -757,10 +780,10 @@ class MapDetector:
             # 马车
             if match(4500, 4501, 51150):
                 icons.append(((x, y), CARRIAGE_ICON))
-            # POI
+            # POI (30:要塞, 32:营地, 34:遗迹, 37:村庄, 38:大教堂, 41:小教堂)
             if match(
-                30, 32, 34, 38, 
-                500, 501, 524, 525, 
+                30, 32, 34, 37, 38, 41,
+                500, 501, 524, 525,
             ):
                 color = (200, 220, 150, 255) if not construct.is_underground else (250, 200, 250, 255)
                 y += scale_size(15)
@@ -852,7 +875,7 @@ class MapDetector:
 
         # 地图模式匹配
         if param.do_match_pattern:
-            pattern, score = self._match_map_pattern(img, param.earth_shifting)
+            pattern, score = self._match_map_pattern(img, param.earth_shifting, param.manual_constraint)
             ret.pattern = pattern
             ret.pattern_score = score
 

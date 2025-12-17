@@ -226,3 +226,4 @@ uv.lock
 .vscode/
 
 justfile
+.idea
